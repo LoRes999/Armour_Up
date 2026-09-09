@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Constants from 'expo-constants';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -13,6 +14,18 @@ import { confirm, notify } from '../confirm';
 import { exportData } from '../exportData';
 
 /** Shared by the trainer's Settings tab and the client's Profile tab. */
+/**
+ * Read from the manifest rather than typed in. This used to read
+ * "Version 1.0.0 (build 24)" — a build number that existed nowhere, and the
+ * first thing anybody checks when a bug report says which version they are on.
+ */
+function versionLabel(): string {
+  const config = Constants.expoConfig;
+  const version = config?.version ?? '1.0.0';
+  const build = config?.ios?.buildNumber ?? String(config?.android?.versionCode ?? '');
+  return build ? `Version ${version} (build ${build})` : `Version ${version}`;
+}
+
 export default function SettingsScreen() {
   const p = usePalette();
   const router = useRouter();
@@ -282,7 +295,7 @@ export default function SettingsScreen() {
         </Card>
       </Section>
 
-      <Text style={{ fontSize: 10, color: p.dim, textAlign: 'center' }}>Version 1.0.0 (build 24)</Text>
+      <Text style={{ fontSize: 10, color: p.dim, textAlign: 'center' }}>{versionLabel()}</Text>
       </ScrollView>
 
       <DayTypeEditor
