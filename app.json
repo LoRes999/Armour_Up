@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Strength Coach",
+    "slug": "strength-coach",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "strengthcoach",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.strengthcoach"
+    },
+    "android": {
+      "package": "com.example.strengthcoach",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can illustrate your own movements."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

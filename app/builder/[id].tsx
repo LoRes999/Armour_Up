@@ -1,0 +1,459 @@
+import React, { useState } from 'react';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useStore } from '../../src/store';
+import { metrics, usePalette } from '../../src/theme';
+import {
+  Card,
+  DashedButton,
+  EmptyState,
+  Eyebrow,
+  Numeric,
+  PrimaryButton,
+  RepStepper,
+  WeightStepper,
+} from '../../src/components/ui';
+import { DayTypeChip, DayTypeSheet } from '../../src/components/DayTypePicker';
+import {
+  ExerciseEntry,
+  DEFAULT_UNIT,
+  formatIn,
+  schemeSummary,
+  topLoggedWeight,
+  topTargetWeight,
+  totalSets,
+} from '../../src/models';
+import { confirm } from '../../src/confirm';
+
+export default function Builder() {
+  const p = usePalette();
+  const router = useRouter();
+  const store = useStore();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const workout = store.workout(id);
+  const client = workout ? store.client(workout.clientId) : undefined;
+  const unit = client?.unit ?? DEFAULT_UNIT;
+
+  const [openExercise, setOpenExercise] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [pickingDay, setPickingDay] = useState(false);
+
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/(trainer)/clients'));
+
+  if (!workout) {
+    // The header has to be configured here too. The root layout sets
+    // headerShown: false, and a modal has no swipe dismiss on the web, so
+    // returning early without it leaves no way out.
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'Workout Builder',
+            headerLeft: () => (
+              <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+                <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
+              </Pressable>
+            ),
+          }}
+        />
+        <EmptyState
+          icon="document-outline"
+          title="Workout not found"
+          message="This workout has been removed."
+        />
+      </>
+    );
+  }
+
+  const firstName = client?.name.split(' ')[0] ?? 'client';
+  const currentOpen = openExercise ?? workout.exercises[0]?.id ?? null;
+
+  /** Keeps the time of day, moves the calendar day. */
+  const shiftDate = (days: number) => {
+    const next = new Date(workout.date);
+    next.setDate(next.getDate() + days);
+    store.setWorkoutDate(workout.id, next.toISOString());
+  };
+
+  const dateLabel = (() => {
+    const when = new Date(workout.date);
+    const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const offset = Math.round((midnight(when) - midnight(new Date())) / 86_400_000);
+    if (offset === 0) return 'Today';
+    if (offset === 1) return 'Tomorrow';
+    if (offset === -1) return 'Yesterday';
+    return when.toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  })();
+
+  const confirmDelete = () =>
+    confirm({
+      title: 'Delete this workout?',
+      message: `${workout.name} will be removed from ${firstName}'s programme.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+      onConfirm: () => {
+        const doomed = workout.id;
+        close();
+        store.removeWorkout(doomed);
+      },
+    });
+
+  const lastTimeText = (exercise: ExerciseEntry) => {
+    if (!client) return 'First time programmed';
+    const previous = store
+      .historyFor(client.id)
+      .find((w) => w.exercises.some((e) => e.movementName === exercise.movementName));
+    const match = previous?.exercises.find((e) => e.movementName === exercise.movementName);
+    const top = match ? topLoggedWeight(match) : undefined;
+    if (!match || top === undefined) return 'First time programmed';
+    const reps = [...match.sets].reverse().find((s) => s.loggedWeight === top)?.loggedReps;
+    return `Last time · ${formatIn(top, unit)} ${unit} × ${reps ?? '—'}`;
+  };
+
+  return (
+    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Workout Builder',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()}>
+              <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable onPress={() => router.back()}>
+              <Text style={{ color: p.accent, fontSize: 16, fontWeight: '700' }}>Save</Text>
+            </Pressable>
+          ),
+        }}
+      />
+
+      <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 24, gap: 12 }}>
+        <TextInput
+          value={workout.name}
+          onChangeText={(text) => store.renameWorkout(workout.id, text)}
+          placeholder="Workout name"
+          placeholderTextColor={p.dim}
+          style={{ fontSize: 26, fontWeight: '800', letterSpacing: -0.8, color: p.text }}
+        />
+        <Text style={{ fontSize: 13, color: p.dim, marginTop: -6 }}>
+          {client?.name ?? 'Client'}
+        </Text>
+
+        {/* The date was static text and createWorkout always stamped "now", so
+            every session a trainer built landed on today and there was no way
+            to programme next Tuesday. setWorkoutDate existed with no callers. */}
+        <Card radius={15} style={{ padding: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => shiftDate(-1)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Day earlier"
+              style={{
+                width: metrics.hitTarget,
+                height: metrics.hitTarget,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="chevron-back" size={17} color={p.accent} />
+            </Pressable>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Eyebrow>{dateLabel === 'Today' ? 'SCHEDULED' : 'SCHEDULED FOR'}</Eyebrow>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: p.text, marginTop: 1 }}>
+                {dateLabel}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => shiftDate(1)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Day later"
+              style={{
+                width: metrics.hitTarget,
+                height: metrics.hitTarget,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="chevron-forward" size={17} color={p.accent} />
+            </Pressable>
+          </View>
+        </Card>
+
+        <DayTypeChip
+          dayType={store.dayType(workout.dayTypeId)}
+          onPress={() => setPickingDay(true)}
+        />
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Chip value={String(workout.exercises.length)} label="exercises" />
+          <Chip value={String(totalSets(workout))} label="sets" />
+        </View>
+
+        {workout.exercises.map((exercise, position) => {
+          const open = currentOpen === exercise.id;
+          return (
+            <Card key={exercise.id} style={{ padding: 15 }}>
+              <Pressable
+                onPress={() => setOpenExercise(open ? '' : exercise.id)}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, minHeight: metrics.hitTarget }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: p.text }}>
+                    {exercise.movementName}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: p.dim, marginTop: 2 }}>
+                    {open
+                      ? lastTimeText(exercise)
+                      : `${schemeSummary(exercise)} · ${formatIn(topTargetWeight(exercise), unit)} ${unit}`}
+                  </Text>
+                </View>
+                <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={p.dim} />
+              </Pressable>
+
+              {open ? (
+                <View style={{ marginTop: 8, gap: 5 }}>
+                  <View style={{ flexDirection: 'row', gap: 7 }}>
+                    <View style={{ width: 24 }}>
+                      <Eyebrow>SET</Eyebrow>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Eyebrow>WEIGHT</Eyebrow>
+                    </View>
+                    <View style={{ width: 92, alignItems: 'center' }}>
+                      <Eyebrow>REPS</Eyebrow>
+                    </View>
+                  </View>
+
+                  {exercise.sets.map((set, setIndex) => {
+                    const active = setIndex === exercise.sets.length - 1;
+                    return (
+                      <Pressable
+                        key={set.id}
+                        onLongPress={() => {
+                          if (exercise.sets.length <= 1) return;
+                          confirm({
+                            title: 'Delete set?',
+                            message: `Set ${setIndex + 1} of ${exercise.movementName}`,
+                            confirmLabel: 'Delete',
+                            destructive: true,
+                            onConfirm: () => store.removeSet(workout.id, position, setIndex),
+                          });
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}
+                      >
+                        <View
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: active ? p.accent : p.surfaceAlt,
+                          }}
+                        >
+                          <Text
+                            style={{ fontSize: 11, fontWeight: '800', color: active ? p.onAccent : p.dim }}
+                          >
+                            {setIndex + 1}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={{
+                            flex: 1,
+                            height: metrics.hitTarget,
+                            borderRadius: metrics.controlRadius,
+                            backgroundColor: active ? p.accentSoft : p.surfaceAlt,
+                            borderWidth: 1,
+                            borderColor: active ? p.accent : 'transparent',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <WeightStepper
+                            unit={unit}
+                            value={set.targetWeight}
+                            onChange={(next) =>
+                              store.setTargetWeight(workout.id, position, setIndex, next)
+                            }
+                          />
+                        </View>
+
+                        <View
+                          style={{
+                            width: 92,
+                            height: metrics.hitTarget,
+                            borderRadius: metrics.controlRadius,
+                            backgroundColor: p.surfaceAlt,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 2,
+                          }}
+                        >
+                          <Numeric size={14} style={{ minWidth: 26, textAlign: 'center' }}>
+                            {set.targetReps}
+                          </Numeric>
+                          <RepStepper
+                            value={set.targetReps}
+                            onChange={(next) => store.setTargetReps(workout.id, position, setIndex, next)}
+                          />
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+
+                  <View style={{ marginTop: 2 }}>
+                    <DashedButton
+                      title="Add set"
+                      onPress={() => store.addSet(workout.id, position)}
+                      height={40}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 10, color: p.dim, textAlign: 'center' }}>
+                    Long-press a set to delete it
+                  </Text>
+                </View>
+              ) : null}
+            </Card>
+          );
+        })}
+
+        <DashedButton title="Add exercise" onPress={() => setPicking(true)} color={p.dim} height={48} />
+
+        <View style={{ marginTop: 4 }}>
+          <PrimaryButton title={`Assign to ${firstName}`} onPress={() => router.back()} />
+
+          {/* removeWorkout was only ever reachable from the client's solo
+              Discard, so a workout created here could not be undone. */}
+          <Pressable
+            onPress={confirmDelete}
+            accessibilityRole="button"
+            style={{
+              minHeight: metrics.hitTarget,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: p.danger }}>Delete workout</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      <DayTypeSheet
+        visible={pickingDay}
+        selectedId={workout.dayTypeId}
+        onSelect={(dayTypeId) => store.setWorkoutDayType(workout.id, dayTypeId)}
+        onClose={() => setPickingDay(false)}
+      />
+
+      <MovementPicker
+        visible={picking}
+        onClose={() => setPicking(false)}
+        onPick={(movement) => {
+          store.addExercise(workout.id, movement);
+          setPicking(false);
+        }}
+      />
+    </SafeAreaView>
+  );
+}
+
+function Chip({ value, label }: { value: string; label: string }) {
+  const p = usePalette();
+  return (
+    <Card
+      radius={999}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 5,
+        paddingHorizontal: 13,
+        paddingVertical: 7,
+      }}
+    >
+      <Numeric size={15}>{value}</Numeric>
+      <Text style={{ fontSize: 11, fontWeight: '600', color: p.dim }}>{label}</Text>
+    </Card>
+  );
+}
+
+function MovementPicker({
+  visible,
+  onClose,
+  onPick,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onPick: (movement: string) => void;
+}) {
+  const p = usePalette();
+  const store = useStore();
+  const [search, setSearch] = useState('');
+  // The trainer's own movements are programmable the moment they exist.
+  const catalogue = store.allMovements();
+  const results = search
+    ? catalogue.filter((m) => m.toLowerCase().includes(search.toLowerCase()))
+    : catalogue;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: metrics.screenPadding,
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '800', color: p.text }}>Add exercise</Text>
+          <Pressable onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 16, color: p.accent }}>Cancel</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ paddingHorizontal: metrics.screenPadding }}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search movements"
+            placeholderTextColor={p.dim}
+            style={{
+              height: 40,
+              paddingHorizontal: 13,
+              borderRadius: metrics.controlRadius,
+              backgroundColor: p.surfaceAlt,
+              color: p.text,
+              fontSize: 14,
+            }}
+          />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 8 }}>
+          {results.map((movement) => (
+            <Pressable key={movement} onPress={() => onPick(movement)}>
+              <Card
+                radius={14}
+                style={{ paddingHorizontal: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: p.text }}>{movement}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}

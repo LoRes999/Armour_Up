@@ -1,0 +1,7 @@
+# The working tree is LF throughout. Without this, Git on Windows rewrites every
+# file to CRLF on checkout and the first diff anybody takes is 7,900 lines of noise.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
