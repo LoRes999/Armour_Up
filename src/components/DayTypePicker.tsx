@@ -185,7 +185,7 @@ export function DayTypeEditor({
     .slice(0, DAY_LABEL_MAX);
 
   const field = {
-    height: 46,
+    minHeight: 46,
     paddingHorizontal: 13,
     borderRadius: metrics.controlRadius,
     backgroundColor: p.surfaceAlt,
@@ -276,7 +276,7 @@ export function DayTypeEditor({
                 onPress={onClose}
                 style={{
                   flex: 1,
-                  height: 52,
+                  minHeight: 52,
                   borderRadius: metrics.buttonRadius,
                   backgroundColor: p.surfaceAlt,
                   alignItems: 'center',

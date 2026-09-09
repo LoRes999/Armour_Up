@@ -7,6 +7,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StoreProvider, useStore } from '../src/store';
 import { useIsDark, usePalette } from '../src/theme';
 
+/**
+ * expo-router mounts whatever a layout exports under this name when a render
+ * below it throws. Without it an unhandled error is a white screen.
+ */
+export { AppErrorBoundary as ErrorBoundary } from '../src/components/AppErrorBoundary';
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

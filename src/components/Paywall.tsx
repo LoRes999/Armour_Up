@@ -98,7 +98,7 @@ export default function Paywall() {
           <View
             style={{
               width: 58,
-              height: 58,
+              minHeight: 58,
               borderRadius: 18,
               backgroundColor: p.accent,
               alignItems: 'center',
@@ -213,7 +213,7 @@ export default function Paywall() {
           <Pressable
             onPress={pending ? undefined : buy}
             style={{
-              height: 50,
+              minHeight: 50,
               borderRadius: 12,
               backgroundColor: p.text,
               flexDirection: 'row',
@@ -241,7 +241,7 @@ export default function Paywall() {
             <Card
               radius={12}
               style={{
-                height: 50,
+                minHeight: 50,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',

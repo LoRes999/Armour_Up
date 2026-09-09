@@ -37,7 +37,11 @@ export default function InviteClient() {
           headerShown: true,
           title: invited ? 'Invite sent' : 'Invite client',
           headerLeft: () => (
-            <Pressable onPress={() => router.back()}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <Text style={{ color: p.accent, fontSize: 16 }}>{invited ? 'Done' : 'Cancel'}</Text>
             </Pressable>
           ),
@@ -131,7 +135,7 @@ function SentPanel({ client, onDone }: { client: Client; onDone: () => void }) {
         <View
           style={{
             width: 52,
-            height: 52,
+            minHeight: 52,
             borderRadius: 26,
             backgroundColor: p.accentSoft,
             alignItems: 'center',
@@ -184,6 +188,8 @@ function SentPanel({ client, onDone }: { client: Client; onDone: () => void }) {
 
       <Pressable
         onPress={onDone}
+        accessibilityRole="button"
+        accessibilityLabel="Back to roster"
         style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
       >
         <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Back to roster</Text>
@@ -208,7 +214,7 @@ function Field({
   const p = usePalette();
   return (
     <View
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, height: 50, paddingHorizontal: 14 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 14 }}
     >
       <Text style={{ width: 56, fontSize: 13, fontWeight: '700', color: p.dim }}>{label}</Text>
       <TextInput
@@ -216,6 +222,7 @@ function Field({
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={p.dim}
+        accessibilityLabel={label}
         keyboardType={email ? 'email-address' : 'default'}
         autoCapitalize={email ? 'none' : 'words'}
         style={{ flex: 1, fontSize: 15, color: p.text }}

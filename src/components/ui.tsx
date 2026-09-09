@@ -118,9 +118,12 @@ export function SegmentedPicker<T extends string>({
           <Pressable
             key={option}
             onPress={() => onChange(option)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={labels?.[option] ?? option}
             style={{
               flex: 1,
-              height,
+              minHeight: height,
               borderRadius: 9,
               alignItems: 'center',
               justifyContent: 'center',
@@ -158,8 +161,14 @@ export function PrimaryButton({
   return (
     <Pressable
       onPress={enabled ? onPress : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !enabled }}
       style={{
-        height: 52,
+        // minHeight, not height: identical at the default text size, and the
+        // difference between growing and clipping at the large ones.
+        minHeight: 52,
+        paddingVertical: 8,
         borderRadius: metrics.buttonRadius,
         backgroundColor: background,
         flexDirection: 'row',
@@ -277,8 +286,11 @@ export function DashedButton({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={{
-        height,
+        minHeight: height,
+        paddingVertical: 6,
         borderRadius: metrics.controlRadius,
         borderWidth: 1.5,
         borderStyle: 'dashed',
@@ -430,13 +442,13 @@ export function WeightStepper({
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
                   onPress={() => setEditing(false)}
-                  style={{ flex: 1, height: 46, borderRadius: metrics.controlRadius, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
+                  style={{ flex: 1, minHeight: 46, borderRadius: metrics.controlRadius, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontWeight: '700', color: p.dim }}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={commit}
-                  style={{ flex: 1, height: 46, borderRadius: metrics.controlRadius, backgroundColor: p.accent, alignItems: 'center', justifyContent: 'center' }}
+                  style={{ flex: 1, minHeight: 46, borderRadius: metrics.controlRadius, backgroundColor: p.accent, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontWeight: '800', color: p.onAccent }}>Set</Text>
                 </Pressable>

@@ -46,7 +46,7 @@ export default function Roster() {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 9,
-            height: 40,
+            minHeight: 40,
             paddingHorizontal: 13,
             borderRadius: metrics.controlRadius,
             backgroundColor: p.surfaceAlt,

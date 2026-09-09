@@ -57,23 +57,36 @@ export default function CustomMovementForm() {
     .map((part) => part.trim())
     .filter(Boolean);
 
+  /**
+   * The only place in the app where a native module can throw. Unwrapped, a
+   * picker that fails — no photo library on the device, permission revoked
+   * mid-flow, an OEM gallery that returns nothing — took the whole screen down
+   * along with the half-written movement.
+   */
   const addPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      notify({
-        title: 'Photo access needed',
-        message: 'Allow photo access in Settings to attach pictures to a movement.',
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        notify({
+          title: 'Photo access needed',
+          message: 'Allow photo access in Settings to attach pictures to a movement.',
+        });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+        allowsMultipleSelection: true,
+        selectionLimit: 4,
       });
-      return;
+      if (result.canceled) return;
+      setPhotoUris((current) => [...current, ...result.assets.map((asset) => asset.uri)]);
+    } catch {
+      notify({
+        title: 'Could not open your photos',
+        message: 'Something went wrong reaching the photo library. Everything else you have typed is still here.',
+      });
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-      allowsMultipleSelection: true,
-      selectionLimit: 4,
-    });
-    if (result.canceled) return;
-    setPhotoUris((current) => [...current, ...result.assets.map((asset) => asset.uri)]);
   };
 
   const save = () => {

@@ -431,7 +431,7 @@ function MovementPicker({
             placeholder="Search movements"
             placeholderTextColor={p.dim}
             style={{
-              height: 40,
+              minHeight: 40,
               paddingHorizontal: 13,
               borderRadius: metrics.controlRadius,
               backgroundColor: p.surfaceAlt,

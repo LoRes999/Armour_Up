@@ -60,7 +60,7 @@ export default function DeleteAccount() {
         <View
           style={{
             width: 52,
-            height: 52,
+            minHeight: 52,
             borderRadius: 16,
             backgroundColor: p.dangerSoft,
             alignItems: 'center',
@@ -107,8 +107,10 @@ export default function DeleteAccount() {
             placeholderTextColor={p.dim}
             autoCapitalize="characters"
             autoCorrect={false}
+            accessibilityLabel={`Type ${PHRASE} to confirm`}
+            accessibilityHint={`The delete button stays disabled until you type ${PHRASE}`}
             style={{
-              height: 50,
+              minHeight: 50,
               paddingHorizontal: 15,
               borderRadius: 13,
               fontSize: 16,
@@ -132,6 +134,9 @@ export default function DeleteAccount() {
           />
           <Pressable
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Keep my account"
+            accessibilityHint="Goes back without deleting anything"
             style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Keep my account</Text>

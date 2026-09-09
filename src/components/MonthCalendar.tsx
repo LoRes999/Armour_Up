@@ -17,6 +17,30 @@ export interface CalendarEntry {
   dayType?: DayType;
 }
 
+/**
+ * What a screen reader says for one day.
+ *
+ * The grid encodes a session in colour, a 3pt bar and a six-character label —
+ * none of which survive being read aloud. Every cell was an unlabelled
+ * Pressable announcing only its number, so a whole month of training history
+ * was "1. 2. 3." with no way to tell a trained day from an empty one.
+ */
+function dayLabel(
+  year: number,
+  month: number,
+  day: number,
+  entry: CalendarEntry | undefined
+): string {
+  const date = new Date(year, month, day).toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  if (!entry) return `${date}. No session.`;
+  const kind = entry.dayType?.name ?? entry.workout.name;
+  return `${date}. ${kind}${isSolo(entry.workout) ? ', trained solo' : ''}.`;
+}
+
 /** Monday-first offset for the 1st of the month. */
 function leadingBlanks(year: number, month: number): number {
   return (new Date(year, month, 1).getDay() + 6) % 7;
@@ -51,7 +75,14 @@ export function MonthCalendar({
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row' }}>
         {WEEKDAYS.map((label, index) => (
-          <View key={`${label}-${index}`} style={{ flex: 1, alignItems: 'center' }}>
+          // Decorative: each cell already announces its own weekday, and
+          // "M T W T F S S" read aloud is noise.
+          <View
+            key={`${label}-${index}`}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ flex: 1, alignItems: 'center' }}
+          >
             <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0.6, color: p.dim }}>
               {label}
             </Text>
@@ -130,16 +161,29 @@ export function MonthCalendar({
               </View>
             );
 
+            const label = dayLabel(year, month, day, entry);
+
             return entry ? (
               <Pressable
                 key={day}
                 onPress={() => onSelect(entry)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityHint="Opens this session"
                 style={{ flex: 1, flexDirection: 'row' }}
               >
                 {body}
               </Pressable>
             ) : (
-              <View key={day} style={{ flex: 1, flexDirection: 'row' }}>
+              // Still labelled, but not a button: an untrained day is worth
+              // hearing when you are counting through a week, and is not
+              // worth stopping on when you are looking for sessions.
+              <View
+                key={day}
+                accessible
+                accessibilityLabel={label}
+                style={{ flex: 1, flexDirection: 'row' }}
+              >
                 {body}
               </View>
             );
@@ -173,6 +217,9 @@ export function MonthHeader({
   const arrow = (name: 'chevron-back' | 'chevron-forward', onPress: () => void, enabled: boolean) => (
     <Pressable
       onPress={enabled ? onPress : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={name === 'chevron-back' ? 'Previous month' : 'Next month'}
+      accessibilityState={{ disabled: !enabled }}
       style={{
         width: metrics.hitTarget,
         height: metrics.hitTarget,

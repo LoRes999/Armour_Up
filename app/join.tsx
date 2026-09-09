@@ -94,7 +94,7 @@ export default function Join() {
             autoFocus
             maxLength={CODE_LENGTH + 2}
             style={{
-              height: 64,
+              minHeight: 64,
               borderRadius: metrics.controlRadius,
               backgroundColor: p.surfaceAlt,
               borderWidth: 1.5,

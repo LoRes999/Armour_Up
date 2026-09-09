@@ -142,7 +142,18 @@ export function TopSetChart({
         </View>
       </View>
 
-      <View style={{ marginTop: 10 }}>
+      <View
+        style={{ marginTop: 10 }}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={`Top set over ${points.length} sessions. ${formatIn(
+          points[0].weight,
+          unit
+        )} ${unit} on ${shortDate(points[0].date)}, rising to ${formatIn(
+          points[points.length - 1].weight,
+          unit
+        )} ${unit} on ${shortDate(points[points.length - 1].date)}.`}
+      >
         <Svg width={width} height={height}>
           <Defs>
             <LinearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
@@ -183,13 +194,26 @@ export function TopSetChart({
 
         {/* Tap targets are wider than the dots, so a thumb can hit them. */}
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height, flexDirection: 'row' }}>
-          {points.map((_, index) => (
-            <Pressable key={index} onPress={() => setSelected(index)} style={{ flex: 1 }} />
+          {points.map((point, index) => (
+            <Pressable
+              key={index}
+              onPress={() => setSelected(index)}
+              accessibilityRole="button"
+              accessibilityLabel={`${formatIn(point.weight, unit)} ${unit} on ${shortDate(
+                point.date
+              )}`}
+              accessibilityState={{ selected: index === activeIndex }}
+              style={{ flex: 1 }}
+            />
           ))}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -18 }}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -18 }}
+      >
         <Text style={{ fontSize: 9, fontWeight: '700', color: p.dim }}>
           {shortDate(points[0].date).toUpperCase()}
         </Text>

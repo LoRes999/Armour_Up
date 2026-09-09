@@ -131,7 +131,7 @@ export default function SettingsScreen() {
           <Card radius={15}>
             <View
               style={{
-                height: 46,
+                minHeight: 46,
                 paddingHorizontal: 13,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -153,7 +153,7 @@ export default function SettingsScreen() {
             </View>
             <Divider />
             <Pressable onPress={() => store.restorePurchase()}>
-              <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+              <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
                   Restore purchases
                 </Text>
@@ -171,7 +171,7 @@ export default function SettingsScreen() {
                     router.replace('/');
                   }}
                 >
-                  <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+                  <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                     <Text style={{ fontSize: 14, fontWeight: '600', color: p.dim }}>
                       End subscription (demo)
                     </Text>
@@ -220,7 +220,7 @@ export default function SettingsScreen() {
             ))}
             {store.dayTypes.length ? <Divider /> : null}
             <Pressable onPress={() => setEditing('new')}>
-              <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+              <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>
                   Add day type
                 </Text>
@@ -254,7 +254,7 @@ export default function SettingsScreen() {
               }
               accessibilityRole="button"
             >
-              <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+              <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
                   {store.hasSampleData ? 'Remove sample data' : 'Load sample data'}
                 </Text>
@@ -289,13 +289,13 @@ export default function SettingsScreen() {
       <Section title="ACCOUNT">
         <Card radius={15}>
           <Pressable onPress={confirmSignOut}>
-            <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+            <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>Sign out</Text>
             </View>
           </Pressable>
           <Divider />
           <Pressable onPress={() => router.push('/delete-account')}>
-            <View style={{ height: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+            <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: p.danger }}>Delete account</Text>
             </View>
           </Pressable>
@@ -362,7 +362,7 @@ function NavRow({
     <Pressable onPress={onPress} accessibilityRole="button">
       <View
         style={{
-          height: 46,
+          minHeight: 46,
           paddingHorizontal: 13,
           flexDirection: 'row',
           alignItems: 'center',
