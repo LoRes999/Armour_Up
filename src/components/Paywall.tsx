@@ -9,6 +9,8 @@ import { Card, Pill, Title } from './ui';
 import { PLANS } from '../purchases';
 import { PlanId } from '../models';
 import { notify } from '../confirm';
+import { openHosted } from '../legal';
+import type { LegalDocId } from '../legalContent';
 
 /**
  * Screen one. Trainers pay for the app; clients are free and arrive through an
@@ -36,6 +38,11 @@ export default function Paywall() {
   // they arrive with a code — so owning a subscription is what a coach is.
   const buy = async () => {
     if (await store.purchasePlan(plan)) store.signInAsTrainer();
+  };
+
+  /** The published copy if one is configured, otherwise the version in the app. */
+  const openLegal = async (doc: LegalDocId) => {
+    if (!(await openHosted(doc))) router.push({ pathname: '/legal/[doc]', params: { doc } });
   };
 
   const restore = async () => {
@@ -283,9 +290,27 @@ export default function Paywall() {
           </Pressable>
         ) : null}
 
+        {/* Apple requires these to be reachable next to a subscription price.
+            They were flat text until now — the words were there and nothing
+            happened when you pressed them. */}
         <Text style={{ fontSize: 11, color: p.dim, textAlign: 'center', lineHeight: 17 }}>
-          Billed through the App Store and renews until cancelled. By continuing you agree to our
-          Terms of Service and Privacy Policy.
+          Billed through the App Store and renews until cancelled. By continuing you agree to our{' '}
+          <Text
+            onPress={() => openLegal('terms')}
+            accessibilityRole="link"
+            style={{ color: p.accent, fontWeight: '700' }}
+          >
+            Terms of Service
+          </Text>
+          {' and '}
+          <Text
+            onPress={() => openLegal('privacy')}
+            accessibilityRole="link"
+            style={{ color: p.accent, fontWeight: '700' }}
+          >
+            Privacy Policy
+          </Text>
+          .
         </Text>
       </ScrollView>
     </SafeAreaView>

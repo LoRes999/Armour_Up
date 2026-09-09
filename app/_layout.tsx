@@ -75,6 +75,12 @@ function Root() {
           options={{ presentation: 'modal', headerShown: true }}
         />
         <Stack.Screen name="join" options={{ presentation: 'modal' }} />
+        {/* Terms and Privacy. Outside both guards, because the paywall links to
+            them before anybody has signed in or paid. */}
+        <Stack.Screen
+          name="legal/[doc]"
+          options={{ presentation: 'modal', headerShown: true, headerBackTitle: 'Back' }}
+        />
         <Stack.Screen
           name="delete-account"
           options={{ headerShown: true, title: 'Delete Account', headerBackTitle: 'Back' }}

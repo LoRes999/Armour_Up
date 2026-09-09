@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Constants from 'expo-constants';
+import { openHosted } from '../legal';
+import type { LegalDocId } from '../legalContent';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -57,12 +59,14 @@ export default function SettingsScreen() {
     });
   };
 
-  const showPrivacy = () =>
-    notify({
-      title: 'Privacy Policy',
-      message:
-        'This app stores your training data on this device only. There is no server, no account database and no analytics, so nothing is transmitted anywhere. Deleting your account from this screen removes the data immediately and permanently.',
-    });
+  /**
+   * Was an alert holding a three-sentence summary. It is a real document now,
+   * generated from docs/privacy.md so the copy here and the copy published for
+   * App Store Connect cannot drift apart.
+   */
+  const openLegal = async (doc: LegalDocId) => {
+    if (!(await openHosted(doc))) router.push({ pathname: '/legal/[doc]', params: { doc } });
+  };
 
   const showVisibility = () =>
     notify({
@@ -155,9 +159,10 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </Pressable>
-            {/* Only exists while purchases are mocked. Without it there is no
-                way to reach the lapsed paywall without editing code. */}
-            {store.expireSubscriptionForDemo ? (
+            {/* Development only. It exists to reach the lapsed paywall without
+                editing code, and a shipped build must not offer somebody a
+                button that ends the subscription they are paying for. */}
+            {__DEV__ && store.expireSubscriptionForDemo ? (
               <>
                 <Divider />
                 <Pressable
@@ -264,7 +269,9 @@ export default function SettingsScreen() {
 
       <Section title="PRIVACY & DATA">
         <Card radius={15}>
-          <NavRow label="Privacy Policy" onPress={showPrivacy} />
+          <NavRow label="Privacy Policy" onPress={() => void openLegal('privacy')} />
+          <Divider />
+          <NavRow label="Terms of Service" onPress={() => void openLegal('terms')} />
           <Divider />
           <NavRow
             label={
