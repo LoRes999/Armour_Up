@@ -33,6 +33,12 @@ export interface PurchaseService {
   /** Last known value, synchronously, so the first paint never flashes a paywall. */
   cached(): Subscription | null;
   /**
+   * Adopt a subscription restored from disk, so cached() and the store agree
+   * about whether this person has paid. A real implementation can ignore it —
+   * it asks the store rather than trusting anything we saved locally.
+   */
+  hydrate?(subscription: Subscription | null): void;
+  /**
    * Mock only. A real implementation omits it, and the Settings screen renders
    * its row only when this is present.
    */
@@ -85,22 +91,25 @@ function createMockPurchaseService(): PurchaseService {
 
     async restore() {
       await wait(400);
-      // ⚠️ MOCK ONLY — this succeeds unconditionally.
+      // Returns what is actually owned, which on a fresh install is nothing.
       //
-      // Nothing in this app is persisted, so a page reload drops the
-      // subscription along with everything else. Without an unconditional
-      // restore there would be no way back into the trainer app during review.
-      // A real restore() asks the store what this Apple ID actually owns and
-      // returns null when the answer is nothing; shipping this version would
-      // give the app away for free.
-      // Restores to an *active* subscription even when the local one has
-      // lapsed — otherwise the demo’s expiry switch would be one-way.
-      if (!current || current.status !== 'active') current = grant(current?.plan ?? 'annual');
+      // This used to grant a subscription unconditionally, because nothing was
+      // persisted and an unconditional restore was the only way back into the
+      // trainer app after a reload. The store is saved to disk now, so that
+      // reason is gone — and shipping the old behaviour would have given the
+      // paid app away to anyone who tapped Restore.
+      //
+      // Still a mock: purchase() below grants without charging anyone. A real
+      // implementation asks StoreKit what this Apple ID owns.
       return current;
     },
 
     cached() {
       return current;
+    },
+
+    hydrate(subscription) {
+      current = subscription;
     },
 
     debugExpire() {

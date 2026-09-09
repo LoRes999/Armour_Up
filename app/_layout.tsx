@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,6 +29,15 @@ function Root() {
   // to index — the paywall — instead of rendering tabs for a signed-out user.
   const trainerReady = store.canUseTrainerApp();
   const clientReady = store.canUseClientApp();
+
+  // Hold the first paint until the saved store is back. Both guards above read
+  // false on an empty store, so rendering early shows a coach who has paid the
+  // paywall — and a signed-in client the same — for as long as the read takes.
+  // The fill matches the splash background, so it reads as the splash still
+  // being up rather than as a flash of the wrong screen.
+  if (!store.hydrated) {
+    return <View style={{ flex: 1, backgroundColor: palette.background }} />;
+  }
 
   return (
     <>

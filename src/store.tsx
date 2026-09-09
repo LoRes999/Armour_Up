@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Client,
   CustomMovement,
@@ -23,11 +23,18 @@ import {
 } from './models';
 import { MOVEMENT_CATALOGUE, SEED_DAY_TYPES, buildSeed } from './sampleData';
 import { purchases } from './purchases';
+import { Snapshot, SNAPSHOT_VERSION, clearSnapshot, loadSnapshot, saveSnapshot } from './persistence';
 
 export type Appearance = 'light' | 'dark' | 'system';
 
 interface StoreValue {
   // session
+  /**
+   * False until the saved store has been read back off disk. The root gate
+   * decides between the paywall and the app synchronously, so rendering before
+   * this flips shows a signed-in coach the paywall on every cold start.
+   */
+  hydrated: boolean;
   role: Role | null;
   signedInClientId: string | null;
   appearance: Appearance;
@@ -161,6 +168,66 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(() => purchases.cached());
   const [purchasePending, setPurchasePending] = useState(false);
 
+  // Nothing may render until the saved store has been read back: the root gate
+  // chooses between the paywall and the app synchronously.
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSnapshot().then((saved) => {
+      if (cancelled) return;
+      if (saved) {
+        setClients(saved.clients);
+        setWorkouts(saved.workouts);
+        // A build that ships new starter day types should not strip them from
+        // somebody who has never opened that screen.
+        setDayTypes(saved.dayTypes.length ? saved.dayTypes : SEED_DAY_TYPES);
+        setCustomMovements(saved.customMovements);
+        setRole(saved.role);
+        setSignedInClientId(saved.signedInClientId);
+        setAppearance(saved.appearance);
+        setSubscription(saved.subscription);
+        // The mock purchase service keeps its own module-level copy. Telling it
+        // what we restored stops cached() and the store disagreeing about
+        // whether this person has paid.
+        purchases.hydrate?.(saved.subscription);
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Guarding on hydrated is not optional. Without it this fires on the
+    // initial empty state and erases the saved store before the read above has
+    // resolved — silently, and only on a cold start.
+    if (!hydrated) return;
+    const snapshot: Snapshot = {
+      version: SNAPSHOT_VERSION,
+      clients,
+      workouts,
+      dayTypes,
+      customMovements,
+      role,
+      signedInClientId,
+      appearance,
+      subscription,
+    };
+    saveSnapshot(snapshot);
+  }, [
+    hydrated,
+    clients,
+    workouts,
+    dayTypes,
+    customMovements,
+    role,
+    signedInClientId,
+    appearance,
+    subscription,
+  ]);
+
   const mutate = useCallback((workoutId: string, body: (draft: Workout) => void) => {
     setWorkouts((current) =>
       current.map((workout) => {
@@ -195,6 +262,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return {
+      hydrated,
       role,
       signedInClientId,
       appearance,
@@ -605,6 +673,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }
         setSignedInClientId(null);
         setRole(null);
+        // Deletion has to leave nothing behind. Waiting for the debounced write
+        // of the emptied state would be a promise we cannot keep if the app is
+        // killed in between, so the saved store goes now.
+        void clearSnapshot();
       },
 
       setWorkoutDayType: (workoutId, dayTypeId) =>
@@ -753,6 +825,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
     };
   }, [
+    hydrated,
     clients,
     workouts,
     dayTypes,

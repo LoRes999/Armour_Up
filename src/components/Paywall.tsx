@@ -8,6 +8,7 @@ import { metrics, usePalette } from '../theme';
 import { Card, Pill, Title } from './ui';
 import { PLANS } from '../purchases';
 import { PlanId } from '../models';
+import { notify } from '../confirm';
 
 /**
  * Screen one. Trainers pay for the app; clients are free and arrive through an
@@ -38,7 +39,18 @@ export default function Paywall() {
   };
 
   const restore = async () => {
-    if (await store.restorePurchase()) store.signInAsTrainer();
+    if (await store.restorePurchase()) {
+      store.signInAsTrainer();
+      return;
+    }
+    // restore() no longer hands out a subscription just for asking, so this is
+    // a reachable outcome now and has to say something. Silence would read as
+    // a dead button, which is what half the controls in here used to be.
+    notify({
+      title: 'Nothing to restore',
+      message:
+        'No active subscription is attached to this account. Choose a plan above to get started.',
+    });
   };
 
   const bullets = lapsed
