@@ -26,11 +26,13 @@ import {
   totalSets,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
+import { useCelebration } from '../../src/celebration/CelebrationProvider';
 
 export default function Builder() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
+  const { celebrate } = useCelebration();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const workout = store.workout(id);
@@ -77,6 +79,26 @@ export default function Builder() {
     const next = new Date(workout.date);
     next.setDate(next.getDate() + days);
     store.setWorkoutDate(workout.id, next.toISOString());
+  };
+
+  /**
+   * The one "send" moment. Save and Cancel stay silent — they close an edit —
+   * but assigning is the trainer handing something to a person. assignWorkout
+   * answers false after the first time and for an empty workout, so neither a
+   * re-save nor a blank session gets confetti.
+   */
+  const assign = () => {
+    const firstTime = store.assignWorkout(workout.id);
+    close();
+    if (firstTime && client) {
+      celebrate({
+        kind: 'assigned',
+        clientName: client.name,
+        workoutName: workout.name,
+        exerciseCount: workout.exercises.length,
+        date: workout.date,
+      });
+    }
   };
 
   const dateLabel = (() => {
@@ -333,7 +355,7 @@ export default function Builder() {
         <DashedButton title="Add exercise" onPress={() => setPicking(true)} color={p.dim} height={48} />
 
         <View style={{ marginTop: 4 }}>
-          <PrimaryButton title={`Assign to ${firstName}`} onPress={() => router.back()} />
+          <PrimaryButton title={`Assign to ${firstName}`} onPress={assign} />
 
           {/* removeWorkout was only ever reachable from the client's solo
               Discard, so a workout created here could not be undone. */}

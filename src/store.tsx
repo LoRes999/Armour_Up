@@ -24,6 +24,7 @@ import {
 import { MOVEMENT_CATALOGUE, SEED_DAY_TYPES, buildSeed } from './sampleData';
 import { purchases } from './purchases';
 import { Snapshot, SNAPSHOT_VERSION, clearSnapshot, loadSnapshot, saveSnapshot } from './persistence';
+import { Streak, weekStreak as computeWeekStreak } from './rewards';
 
 export type Appearance = 'light' | 'dark' | 'system';
 
@@ -84,6 +85,8 @@ interface StoreValue {
   clientByCode: (code: string) => Client | undefined;
   /** The client's unfinished solo session, if one is open. */
   activeSoloFor: (clientId: string) => Workout | undefined;
+  /** Sessions the coach has sent that the client has not acknowledged yet. */
+  unseenFromCoach: (clientId: string) => Workout[];
 
   // mutations
   createWorkout: (clientId: string) => string;
@@ -111,6 +114,13 @@ interface StoreValue {
   /** Copies a completed session forward as a solo one the client owns. */
   repeatWorkout: (sourceWorkoutId: string) => string | undefined;
   removeWorkout: (workoutId: string) => void;
+  /**
+   * Stamps the moment the trainer sent it. True the first time only, so
+   * re-saving an edit does not celebrate again. An empty workout is never sent.
+   */
+  assignWorkout: (workoutId: string) => boolean;
+  /** The client has seen the "new session" card; it stops showing. */
+  markSeenByClient: (workoutId: string) => void;
   setLoggedWeight: (workoutId: string, exercise: number, set: number, weight: number) => void;
   setLoggedReps: (workoutId: string, exercise: number, set: number, reps: number) => void;
   setClientUnit: (clientId: string, unit: WeightUnit) => void;
@@ -134,6 +144,8 @@ interface StoreValue {
   sessionCount: (clientId: string, weeks?: number) => number;
   /** Sets logged in the last seven days. */
   weekSets: (clientId: string) => number;
+  /** Consecutive weeks trained, and whether this week still needs a session to keep it. */
+  weekStreak: (clientId: string) => Streak;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -373,6 +385,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         workoutsFor(clientId).find((w) => w.loggedBy === 'client' && w.status !== 'completed'),
 
       /**
+       * News, not history: sent, not yet acknowledged, and not already past.
+       * A session whose day has gone is no longer something to look forward to.
+       */
+      unseenFromCoach: (clientId) => {
+        const today = startOfDay(new Date());
+        return workoutsFor(clientId)
+          .filter(
+            (w) =>
+              w.loggedBy === 'trainer' &&
+              w.status !== 'completed' &&
+              w.assignedAt !== undefined &&
+              w.seenByClientAt === undefined &&
+              startOfDay(w.date) >= today
+          )
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      },
+
+      /**
        * Someone who has trained, but not lately. A client who has never trained
        * is not lapsed — they are new, and badging them LAPSED thirty seconds
        * after an invite is the first thing a trainer used to see.
@@ -561,6 +591,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       removeWorkout: (workoutId) =>
         setWorkouts((current) => current.filter((w) => w.id !== workoutId)),
+
+      assignWorkout: (workoutId) => {
+        const target = workouts.find((w) => w.id === workoutId);
+        // A solo session is the client's own, and an empty one is nothing to send.
+        if (
+          !target ||
+          target.loggedBy !== 'trainer' ||
+          target.assignedAt !== undefined ||
+          target.exercises.length === 0
+        ) {
+          return false;
+        }
+        mutate(workoutId, (w) => {
+          w.assignedAt = new Date().toISOString();
+        });
+        return true;
+      },
+
+      markSeenByClient: (workoutId) =>
+        mutate(workoutId, (w) => {
+          w.seenByClientAt = w.seenByClientAt ?? new Date().toISOString();
+        }),
 
       finishWorkout: (workoutId, durationMinutes) => {
         // Guard on the transition, not the call. Both the header flag and the
@@ -823,6 +875,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           .filter((w) => new Date(w.date).getTime() >= cutoff)
           .reduce((total, w) => total + loggedSets(w), 0);
       },
+
+      weekStreak: (clientId) =>
+        computeWeekStreak(
+          historyFor(clientId).map((w) => w.date),
+          new Date()
+        ),
     };
   }, [
     hydrated,

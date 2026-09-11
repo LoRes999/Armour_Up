@@ -23,6 +23,8 @@ import {
   schemeSummary,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
+import { useCelebration } from '../../src/celebration/CelebrationProvider';
+import { sessionReward } from '../../src/rewards';
 
 const REST_SECONDS = 90;
 
@@ -35,6 +37,7 @@ export default function LiveSession() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
+  const { celebrate } = useCelebration();
   const { id, clientId } = useLocalSearchParams<{ id: string; clientId?: string }>();
 
   const workout = store.workout(id);
@@ -116,9 +119,35 @@ export default function LiveSession() {
   const timeString = (seconds: number) =>
     `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
+  /**
+   * Used to drop the trainer back on Today, where the card they had just
+   * finished simply vanished. Now it lands with the session's payoff over it —
+   * naming the client, because the two of them are standing together and this
+   * is something to turn round and show.
+   */
   const finish = () => {
-    store.finishWorkout(workout.id, Math.max(1, Math.round(elapsed / 60)));
+    const minutes = Math.max(1, Math.round(elapsed / 60));
+    const reward = client
+      ? sessionReward({
+          workout,
+          priorRecords: store.personalRecords(client.id),
+          priorCompletedDates: store.historyFor(client.id).map((w) => w.date),
+          minutes,
+          now: new Date(),
+        })
+      : null;
+    store.finishWorkout(workout.id, minutes);
     router.back();
+    if (reward && client) {
+      celebrate({
+        kind: 'session',
+        audience: 'trainer',
+        reward,
+        clientName: client.name,
+        workoutName: workout.name,
+        unit,
+      });
+    }
   };
 
   const confirmFinish = () =>

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StoreProvider, useStore } from '../src/store';
 import { useIsDark, usePalette } from '../src/theme';
+import { CelebrationProvider } from '../src/celebration/CelebrationProvider';
 
 /**
  * expo-router mounts whatever a layout exports under this name when a render
@@ -45,8 +46,10 @@ function Root() {
     return <View style={{ flex: 1, backgroundColor: palette.background }} />;
   }
 
+  // After the hydration gate, so a celebration can read the store — and inside
+  // the root, so its overlay is a sibling drawn above the Stack.
   return (
-    <>
+    <CelebrationProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -92,6 +95,6 @@ function Root() {
           options={{ headerShown: true, title: 'Delete Account', headerBackTitle: 'Back' }}
         />
       </Stack>
-    </>
+    </CelebrationProvider>
   );
 }

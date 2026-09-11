@@ -22,6 +22,8 @@ import {
   schemeSummary,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
+import { useCelebration } from '../../src/celebration/CelebrationProvider';
+import { sessionReward } from '../../src/rewards';
 
 /**
  * The client training on their own. Deliberately a separate screen from the
@@ -36,6 +38,7 @@ export default function SoloSession() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
+  const { celebrate } = useCelebration();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const workout = store.workout(id);
@@ -94,7 +97,19 @@ export default function SoloSession() {
 
   const finish = () => {
     const finishedId = workout.id;
-    store.finishWorkout(finishedId, Math.max(1, Math.round(elapsed / 60)));
+    const minutes = Math.max(1, Math.round(elapsed / 60));
+    // Worked out before finishWorkout, while the store still holds the old
+    // records: "was 85, now 90" needs the 85.
+    const reward = client
+      ? sessionReward({
+          workout,
+          priorRecords: store.personalRecords(client.id),
+          priorCompletedDates: store.historyFor(client.id).map((w) => w.date),
+          minutes,
+          now: new Date(),
+        })
+      : null;
+    store.finishWorkout(finishedId, minutes);
     // Landing on the record they just made is the payoff, but a replace() from
     // here diverges at the root stack: it rebuilds (client) from scratch, giving
     // a second tab navigator and a History stack holding only [id] with no
@@ -105,6 +120,18 @@ export default function SoloSession() {
       { pathname: '/(client)/history/[id]', params: { id: finishedId } },
       { withAnchor: true }
     );
+    // The end of a session is the part people remember. It lands over the
+    // record they just made.
+    if (reward && client) {
+      celebrate({
+        kind: 'session',
+        audience: 'client',
+        reward,
+        clientName: client.name,
+        workoutName: workout.name,
+        unit,
+      });
+    }
   };
 
   const confirmFinish = () =>

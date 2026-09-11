@@ -148,6 +148,13 @@ export interface Workout {
   /** Which trainer-defined day type this session belongs to. */
   dayTypeId?: string;
   durationMinutes?: number;
+  /**
+   * When the trainer tapped "Assign". The signal that the client has something
+   * new waiting. Optional, so snapshots written before it existed still load.
+   */
+  assignedAt?: string;
+  /** When the client acknowledged it, which clears the "new session" card. */
+  seenByClientAt?: string;
 }
 
 /**

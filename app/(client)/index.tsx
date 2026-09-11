@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,6 +31,8 @@ import {
   workoutProgress,
 } from '../../src/models';
 import { TRAINER_NAME } from '../../src/sampleData';
+import { useCelebration } from '../../src/celebration/CelebrationProvider';
+import { relativeDay } from '../../src/rewards';
 
 /**
  * What the client is doing today, and how it is going. Read-only by design:
@@ -53,6 +55,19 @@ export default function ClientToday() {
   const lastSession = client ? store.historyFor(client.id)[0] : undefined;
   const unit = client?.unit ?? DEFAULT_UNIT;
   const coachFirstName = TRAINER_NAME.split(' ')[0];
+
+  const streak = client ? store.weekStreak(client.id) : { weeks: 0, atRisk: false };
+  const fresh = client ? store.unseenFromCoach(client.id) : [];
+  const { burstOnce } = useCelebration();
+  const freshKey = fresh.map((w) => w.id).join(',');
+
+  // A light burst the first time each new session is seen this launch. The
+  // provider remembers, so switching tabs and back does not replay it.
+  useEffect(() => {
+    fresh.forEach((w) => burstOnce(`new-${w.id}`));
+    // Keyed on the ids, not the array, which is rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freshKey, burstOnce]);
 
   const repeatLast = () => {
     if (!lastSession) return;
@@ -90,6 +105,64 @@ export default function ClientToday() {
           </View>
           {client ? <Avatar initials={initialsOf(client.name)} /> : null}
         </View>
+
+        {/* Weekly, so rest days never break it. When this week still needs a
+            session, it says so — the thing to lose is what brings people back. */}
+        {streak.weeks > 0 ? (
+          <Card
+            radius={16}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingVertical: 11,
+              paddingHorizontal: 14,
+              borderColor: streak.atRisk ? p.accent : p.border,
+            }}
+          >
+            <Ionicons name="flame" size={22} color={p.accent} />
+            <View style={{ flex: 1 }} accessible>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: p.text }}>
+                {streak.atRisk
+                  ? `Keep your ${streak.weeks}-week streak`
+                  : `${streak.weeks}-week streak`}
+              </Text>
+              <Text style={{ fontSize: 12, color: p.dim, marginTop: 1 }}>
+                {streak.atRisk
+                  ? 'Train once this week to keep it going.'
+                  : 'You have trained every week. Rest days never break it.'}
+              </Text>
+            </View>
+          </Card>
+        ) : null}
+
+        {/* What the coach just sent. Stays until acknowledged, across launches. */}
+        {fresh.map((w) => (
+          <Card key={w.id} radius={20} style={{ padding: 16, gap: 8, borderColor: p.accent }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <Ionicons name="sparkles" size={15} color={p.accent} />
+              <Eyebrow color={p.accent}>{`NEW FROM ${coachFirstName.toUpperCase()}`}</Eyebrow>
+            </View>
+            <View>
+              <Text style={{ fontSize: 19, fontWeight: '800', letterSpacing: -0.5, color: p.text }}>
+                {w.name}
+              </Text>
+              <Text style={{ fontSize: 12, color: p.dim, marginTop: 3 }}>
+                {`${relativeDay(w.date, new Date())} · ${w.exercises.length} ${
+                  w.exercises.length === 1 ? 'exercise' : 'exercises'
+                }`}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => store.markSeenByClient(w.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Got it, ${w.name}`}
+              style={{ alignSelf: 'flex-start', minHeight: metrics.hitTarget, justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '800', color: p.accent }}>Got it</Text>
+            </Pressable>
+          </Card>
+        ))}
 
         {/* A session they started alone. It can sit alongside a coached one —
             a client booked for 6pm can still train by themselves at seven. */}
