@@ -9,6 +9,7 @@ import { Card, Eyebrow, PrimaryButton, Title, keyboardAware } from '../src/compo
 import { TRAINER_NAME } from '../src/sampleData';
 import { confirm } from '../src/confirm';
 import { clearPhotos } from '../src/photoStorage';
+import { useClose } from '../src/useClose';
 
 const PHRASE = 'DELETE';
 
@@ -20,6 +21,7 @@ const PHRASE = 'DELETE';
 export default function DeleteAccount() {
   const p = usePalette();
   const router = useRouter();
+  const close = useClose();
   const store = useStore();
   const [typed, setTyped] = useState('');
 
@@ -135,7 +137,7 @@ export default function DeleteAccount() {
             onPress={confirmDelete}
           />
           <Pressable
-            onPress={() => router.back()}
+            onPress={close}
             accessibilityRole="button"
             accessibilityLabel="Keep my account"
             accessibilityHint="Goes back without deleting anything"

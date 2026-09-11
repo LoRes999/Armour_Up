@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Clipboard, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
@@ -16,10 +16,11 @@ import {
 } from '../src/models';
 import { TRAINER_NAME } from '../src/sampleData';
 import { useConfirmDiscard } from '../src/useConfirmDiscard';
+import { useClose } from '../src/useClose';
 
 export default function InviteClient() {
   const p = usePalette();
-  const router = useRouter();
+  const close = useClose('/(trainer)/clients');
   const store = useStore();
 
   const [name, setName] = useState('');
@@ -45,7 +46,7 @@ export default function InviteClient() {
           title: invited ? 'Invite sent' : 'Invite client',
           headerLeft: () => (
             <Pressable
-              onPress={() => router.back()}
+              onPress={close}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
@@ -56,7 +57,7 @@ export default function InviteClient() {
       />
 
       {invited ? (
-        <SentPanel client={invited} onDone={() => router.back()} />
+        <SentPanel client={invited} onDone={close} />
       ) : (
         <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, gap: 16 }}>
           <View style={{ gap: 8 }}>

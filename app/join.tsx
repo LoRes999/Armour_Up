@@ -16,6 +16,7 @@ import {
   unitName,
 } from '../src/models';
 import { TRAINER_NAME } from '../src/sampleData';
+import { useClose } from '../src/useClose';
 
 /**
  * How a client gets into the app. The code is their identity — matching it is
@@ -25,6 +26,7 @@ import { TRAINER_NAME } from '../src/sampleData';
 export default function Join() {
   const p = usePalette();
   const router = useRouter();
+  const close = useClose();
   const store = useStore();
   const [code, setCode] = useState('');
   // Null until they actually touch the picker. Derived rather than synced, so
@@ -60,8 +62,8 @@ export default function Join() {
     if (!match) return;
     if (unitChoice && unitChoice !== match.unit) store.setClientUnit(match.id, unitChoice);
     store.redeemInviteCode(clean);
-    // Pops back to the root gate, which now redirects into the client app.
-    router.back();
+    // Back to the root gate, which now redirects into the client app.
+    close();
   };
 
   return (
@@ -71,7 +73,7 @@ export default function Join() {
           headerShown: true,
           title: '',
           headerLeft: () => (
-            <Pressable onPress={() => router.back()}>
+            <Pressable onPress={close}>
               <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
             </Pressable>
           ),
@@ -216,7 +218,7 @@ export default function Join() {
             <View style={{ gap: 12, marginTop: 4 }}>
               <PrimaryButton title="Accept invitation" onPress={accept} />
               <Pressable
-                onPress={() => router.back()}
+                onPress={close}
                 style={{
                   minHeight: metrics.hitTarget,
                   alignItems: 'center',

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +18,7 @@ import { metrics, usePalette } from '../../src/theme';
 import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/components/ui';
 import { confirm, notify } from '../../src/confirm';
 import { useConfirmDiscard } from '../../src/useConfirmDiscard';
+import { useClose } from '../../src/useClose';
 import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
 
 /**
@@ -26,7 +27,7 @@ import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
  */
 export default function CustomMovementForm() {
   const p = usePalette();
-  const router = useRouter();
+  const close = useClose('/(trainer)/library');
   const store = useStore();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
 
@@ -133,7 +134,7 @@ export default function CustomMovementForm() {
         photoUris,
       });
     }
-    leave(() => router.back());
+    leave(close);
   };
 
   const confirmDelete = () => {
@@ -147,7 +148,7 @@ export default function CustomMovementForm() {
         finished.current = true;
         discardPhotos([...existing.photoUris, ...added.current]);
         store.removeCustomMovement(existing.id);
-        leave(() => router.back());
+        leave(close);
       },
     });
   };
@@ -167,7 +168,7 @@ export default function CustomMovementForm() {
         options={{
           title: existing ? 'Edit movement' : 'New movement',
           headerLeft: () => (
-            <Pressable onPress={() => router.back()}>
+            <Pressable onPress={close}>
               <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           ),
