@@ -1,4 +1,6 @@
 import { Platform, Share } from 'react-native';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { notify } from './confirm';
 import { Client, DayType, Workout } from './models';
 
@@ -7,9 +9,10 @@ import { Client, DayType, Workout } from './models';
  * account-deletion flow. This is the smallest honest implementation: the data is
  * already all in memory, so it is a JSON document, not a job.
  *
- * There is no expo-file-system or expo-sharing in this project, so the two
- * platforms take different routes — a real download in the browser, the share
- * sheet on a device.
+ * In the browser it downloads as a file. On a phone it is written to a real
+ * .json file and handed to the share sheet — it used to be shared as the text of
+ * a message, which Android pasted into a chat as one enormous message and iOS
+ * saved as a .txt.
  */
 export type ExportBundle = {
   exportedAt: string;
@@ -40,12 +43,39 @@ export async function exportData(bundle: Omit<ExportBundle, 'exportedAt'>) {
     return;
   }
 
+  const file = await writeExportFile(filename, json);
   try {
-    await Share.share({ message: json, title: filename });
+    if (file) {
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'application/json',
+        UTI: 'public.json',
+        dialogTitle: filename,
+      });
+    } else {
+      // No file to hand over, so share the text itself: it still gets the data out.
+      await Share.share({ message: json, title: filename });
+    }
   } catch {
+    // Not a second share sheet: one that failed to open would likely fail again.
     notify({
       title: 'Could not export',
       message: 'Sharing was unavailable. Try again from Settings.',
     });
+  }
+}
+
+/**
+ * Writes the export to the cache folder — it only has to live until the share
+ * sheet has taken a copy. Null when files cannot be shared or written here.
+ */
+async function writeExportFile(filename: string, json: string): Promise<File | null> {
+  try {
+    if (!(await Sharing.isAvailableAsync())) return null;
+    const file = new File(Paths.cache, filename);
+    file.create({ overwrite: true });
+    file.write(json);
+    return file;
+  } catch {
+    return null;
   }
 }
