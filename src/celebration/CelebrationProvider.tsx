@@ -280,7 +280,7 @@ function CelebrationOverlay({
         />
       </Animated.View>
 
-      <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'center', padding: 22 }}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: 22, pointerEvents: 'box-none' }}>
         <Animated.View
           style={{
             width: '100%',

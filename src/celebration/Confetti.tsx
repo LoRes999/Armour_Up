@@ -83,10 +83,9 @@ export function Confetti({
 
   return (
     <View
-      pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
     >
       {pieces.map((piece, index) => {
         const { start, end } = piece;
