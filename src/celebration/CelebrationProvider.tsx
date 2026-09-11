@@ -1,5 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  BackHandler,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePalette } from '../theme';
 import { Card, Eyebrow, Pill, PrimaryButton, StatTile } from '../components/ui';
@@ -238,13 +248,24 @@ function CelebrationOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
     Animated.timing(fade, { toValue: 0, duration: 160, useNativeDriver: native }).start(() =>
       onClose()
     );
-  };
+  }, [fade, native, onClose]);
+
+  // The card is drawn over the navigator rather than inside it, so Android's
+  // back button went to the screen underneath: it closed that screen and left
+  // the card floating over wherever the app landed. Back closes the card first.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      dismiss();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [dismiss]);
 
   return (
     <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
