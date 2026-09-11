@@ -18,8 +18,14 @@ import type { Appearance } from './store';
 const KEY = 'strength-coach/v1';
 
 /**
+ * Where a payload this build cannot understand is copied before anything can
+ * overwrite it — a corrupt write, or data from a newer version of the app.
+ */
+export const UNREADABLE_BACKUP_KEY = `${KEY}:unreadable`;
+
+/**
  * Bump this when the shape changes in a way older data cannot satisfy, and add
- * a migration. An unrecognised version is discarded rather than reinterpreted —
+ * a migration. An unrecognised version is set aside rather than reinterpreted —
  * guessing at somebody's training history is worse than starting empty.
  */
 export const SNAPSHOT_VERSION = 1;
@@ -40,6 +46,21 @@ export interface Snapshot {
 }
 
 /**
+ * What reading the saved store found.
+ *
+ * "Nothing saved" and "could not read it" used to be the same answer (null),
+ * and the store then saved its empty state straight over the file. If storage
+ * was ever unreadable — Android caps it at 6 MB — a relaunch quietly erased
+ * everything. Those two now mean different things.
+ */
+export type ReadResult =
+  | { status: 'ok'; snapshot: Snapshot }
+  /** Nothing usable is saved; a readable payload that wasn't understood has been backed up. */
+  | { status: 'empty' }
+  /** Storage itself failed. Nothing may be written over it for the rest of this launch. */
+  | { status: 'unreadable' };
+
+/**
  * Structural check, not a deep one. The point is to reject a payload that would
  * crash a screen — a missing array read as `.map` — not to re-validate every
  * field the type system already covers on the way in.
@@ -57,21 +78,41 @@ function isSnapshot(value: unknown): value is Snapshot {
 }
 
 /**
- * Reads the saved store, or null when there is nothing usable.
- *
- * Never throws. A corrupt or half-written payload has to degrade to a fresh
- * install: this runs before the first paint, so anything that escapes here is a
- * white screen with no way out of it.
+ * Reads the saved store. Never throws: this runs before the first paint, so
+ * anything that escapes here is a white screen with no way out of it.
  */
-export async function loadSnapshot(): Promise<Snapshot | null> {
+export async function readSnapshot(): Promise<ReadResult> {
+  let raw: string | null;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    return isSnapshot(parsed) ? parsed : null;
+    raw = await AsyncStorage.getItem(KEY);
   } catch {
-    return null;
+    return { status: 'unreadable' };
   }
+  if (!raw) return { status: 'empty' };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  if (isSnapshot(parsed)) return { status: 'ok', snapshot: parsed };
+
+  // Readable, but not something this build understands. Keep a copy before the
+  // app carries on as a fresh install and its first save replaces the original.
+  try {
+    await AsyncStorage.setItem(UNREADABLE_BACKUP_KEY, raw);
+  } catch {
+    // Could not keep a copy, so the original must not be overwritten either.
+    return { status: 'unreadable' };
+  }
+  return { status: 'empty' };
+}
+
+/** The saved store, or null when there is nothing usable. */
+export async function loadSnapshot(): Promise<Snapshot | null> {
+  const result = await readSnapshot();
+  return result.status === 'ok' ? result.snapshot : null;
 }
 
 let pending: Snapshot | null = null;
@@ -102,7 +143,7 @@ export function saveSnapshot(snapshot: Snapshot): void {
   }, WRITE_DELAY_MS);
 }
 
-/** Writes any queued snapshot immediately. Used by tests and by deletion. */
+/** Writes any queued snapshot immediately. Used by tests, deletion, and backgrounding. */
 export async function flushSnapshot(): Promise<void> {
   if (timer) {
     clearTimeout(timer);
@@ -126,6 +167,7 @@ export async function clearSnapshot(): Promise<void> {
   pending = null;
   try {
     await AsyncStorage.removeItem(KEY);
+    await AsyncStorage.removeItem(UNREADABLE_BACKUP_KEY);
   } catch {
     // Same reasoning as write(): nothing useful to do, and nothing to show.
   }

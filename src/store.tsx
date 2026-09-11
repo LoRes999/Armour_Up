@@ -23,7 +23,15 @@ import {
 } from './models';
 import { MOVEMENT_CATALOGUE, SEED_DAY_TYPES, buildSeed } from './sampleData';
 import { purchases } from './purchases';
-import { Snapshot, SNAPSHOT_VERSION, clearSnapshot, loadSnapshot, saveSnapshot } from './persistence';
+import { AppState } from 'react-native';
+import {
+  Snapshot,
+  SNAPSHOT_VERSION,
+  clearSnapshot,
+  flushSnapshot,
+  readSnapshot,
+  saveSnapshot,
+} from './persistence';
 import { Streak, weekStreak as computeWeekStreak } from './rewards';
 
 /**
@@ -191,11 +199,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Nothing may render until the saved store has been read back: the root gate
   // chooses between the paywall and the app synchronously.
   const [hydrated, setHydrated] = useState(false);
+  // Set when the saved store exists but storage could not be read. The app
+  // still opens, but nothing is written over the file for the rest of this
+  // launch — writing the empty state is exactly how the data would be lost.
+  const [saveBlocked, setSaveBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void loadSnapshot().then((saved) => {
+    void readSnapshot().then((result) => {
       if (cancelled) return;
+      if (result.status === 'unreadable') setSaveBlocked(true);
+      const saved = result.status === 'ok' ? result.snapshot : null;
       if (saved) {
         setClients(saved.clients);
         setWorkouts(saved.workouts);
@@ -223,7 +237,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Guarding on hydrated is not optional. Without it this fires on the
     // initial empty state and erases the saved store before the read above has
     // resolved — silently, and only on a cold start.
-    if (!hydrated) return;
+    if (!hydrated || saveBlocked) return;
     const snapshot: Snapshot = {
       version: SNAPSHOT_VERSION,
       clients,
@@ -238,6 +252,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot(snapshot);
   }, [
     hydrated,
+    saveBlocked,
     clients,
     workouts,
     dayTypes,
@@ -247,6 +262,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     appearance,
     subscription,
   ]);
+
+  // Saves are coalesced over 300ms, and iOS pauses timers the moment the app
+  // goes to the background — a change made just before switching away could be
+  // lost if the app was then closed. Write it out at once instead.
+  useEffect(() => {
+    if (!hydrated || saveBlocked) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') void flushSnapshot();
+    });
+    return () => subscription.remove();
+  }, [hydrated, saveBlocked]);
 
   const mutate = useCallback((workoutId: string, body: (draft: Workout) => void) => {
     setWorkouts((current) =>
