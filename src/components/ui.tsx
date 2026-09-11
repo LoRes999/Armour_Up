@@ -43,15 +43,21 @@ export function Numeric({
   size = 15,
   color,
   style,
+  fit = false,
 }: {
   children: React.ReactNode;
   size?: number;
   color?: string;
   style?: StyleProp<TextStyle>;
+  /** Stay on one line, shrinking the text rather than wrapping it. */
+  fit?: boolean;
 }) {
   const p = usePalette();
   return (
     <Text
+      numberOfLines={fit ? 1 : undefined}
+      adjustsFontSizeToFit={fit}
+      minimumFontScale={fit ? 0.6 : undefined}
       style={[
         {
           fontSize: size,
@@ -409,7 +415,9 @@ export function WeightStepper({
           onPress={open}
           style={{
             flex: 1,
-            height: large ? undefined : metrics.hitTarget,
+            // A minimum rather than a fixed height: text that did not fit used
+            // to wrap inside a 44pt box and have its second line cut off.
+            minHeight: large ? undefined : metrics.hitTarget,
             alignItems: 'center',
             justifyContent: 'center',
             paddingLeft: unitWidth + 4,
@@ -418,11 +426,20 @@ export function WeightStepper({
           {/* Baseline alignment belongs to the numeral and its unit alone —
               applying it to the fixed-height row would pin them to the top
               instead of centring them against the two buttons. */}
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <Numeric size={large ? 58 : 16} color={large ? p.text : p.accent}>
+          {/* "102.5 kg" wrapped onto two lines in the builder's narrow weight
+              column on small phones. The numeral now shrinks to fit instead,
+              and the unit never shrinks or wraps. */}
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, maxWidth: '100%' }}>
+            <Numeric
+              fit
+              size={large ? 58 : 16}
+              color={large ? p.text : p.accent}
+              style={{ flexShrink: 1 }}
+            >
               {formatWeight(shown)}
             </Numeric>
             <Text
+              numberOfLines={1}
               onLayout={(event) => setUnitWidth(event.nativeEvent.layout.width)}
               style={{
                 fontSize: large ? 15 : 10,
