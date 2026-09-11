@@ -2,6 +2,7 @@ import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  EMPTY_SYNC,
   SNAPSHOT_VERSION,
   Snapshot,
   clearSnapshot,
@@ -47,6 +48,7 @@ const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
   signedInClientId: null,
   appearance: 'system',
   subscription: null,
+  sync: EMPTY_SYNC,
   ...over,
 });
 

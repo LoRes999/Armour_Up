@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Client, CustomMovement, DayType, Role, Subscription, Workout } from './models';
 import type { Appearance } from './store';
+import type { Outbox } from './sync/types';
 
 /**
  * The whole store, written to disk as one JSON document.
@@ -28,7 +29,7 @@ export const UNREADABLE_BACKUP_KEY = `${KEY}:unreadable`;
  * a migration. An unrecognised version is set aside rather than reinterpreted —
  * guessing at somebody's training history is worse than starting empty.
  */
-export const SNAPSHOT_VERSION = 1;
+export const SNAPSHOT_VERSION = 2;
 
 /** How long a burst of changes is allowed to coalesce before it is written. */
 const WRITE_DELAY_MS = 300;
@@ -43,7 +44,26 @@ export interface Snapshot {
   signedInClientId: string | null;
   appearance: Appearance;
   subscription: Subscription | null;
+  /** Added in version 2. */
+  sync: SyncSnapshot;
 }
+
+/**
+ * Cloud sync's own state, saved in the same write as the data it describes.
+ * A queue saved separately could be a change ahead of or behind the data after
+ * a crash — uploading an edit the store no longer shows, or never uploading
+ * one it does.
+ */
+export interface SyncSnapshot {
+  /** Changes not yet confirmed by the server, oldest first. */
+  outbox: Outbox;
+  /** The newest server update seen, so a launch asks only for what changed since. */
+  lastSyncedAt: number | null;
+  /** The account this data belongs to. Null for data from before accounts existed. */
+  ownerUid: string | null;
+}
+
+export const EMPTY_SYNC: SyncSnapshot = { outbox: [], lastSyncedAt: null, ownerUid: null };
 
 /**
  * What reading the saved store found.
@@ -60,21 +80,42 @@ export type ReadResult =
   /** Storage itself failed. Nothing may be written over it for the rest of this launch. */
   | { status: 'unreadable' };
 
-/**
- * Structural check, not a deep one. The point is to reject a payload that would
- * crash a screen — a missing array read as `.map` — not to re-validate every
- * field the type system already covers on the way in.
- */
-function isSnapshot(value: unknown): value is Snapshot {
+function isSync(value: unknown): value is SyncSnapshot {
   if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<SyncSnapshot>;
+  return Array.isArray(candidate.outbox);
+}
+
+/**
+ * Brings a saved payload up to the current version, or returns null when it
+ * is not one this build understands.
+ *
+ * The check is structural, not deep. The point is to reject a payload that
+ * would crash a screen — a missing array read as `.map` — not to re-validate
+ * every field the type system already covers on the way in.
+ */
+export function upgradeSnapshot(value: unknown): Snapshot | null {
+  if (typeof value !== 'object' || value === null) return null;
   const candidate = value as Partial<Snapshot>;
-  if (candidate.version !== SNAPSHOT_VERSION) return false;
-  return (
+  const hasData =
     Array.isArray(candidate.clients) &&
     Array.isArray(candidate.workouts) &&
     Array.isArray(candidate.dayTypes) &&
-    Array.isArray(candidate.customMovements)
-  );
+    Array.isArray(candidate.customMovements);
+  if (!hasData) return null;
+
+  // Version 1 is everything saved before cloud sync existed: the same data,
+  // no queue, and no account it belongs to yet.
+  if (candidate.version === 1) {
+    return { ...(candidate as Snapshot), version: SNAPSHOT_VERSION, sync: EMPTY_SYNC };
+  }
+  if (candidate.version === SNAPSHOT_VERSION && isSync(candidate.sync)) {
+    return {
+      ...(candidate as Snapshot),
+      sync: { ...EMPTY_SYNC, ...candidate.sync },
+    };
+  }
+  return null;
 }
 
 /**
@@ -96,7 +137,8 @@ export async function readSnapshot(): Promise<ReadResult> {
   } catch {
     parsed = undefined;
   }
-  if (isSnapshot(parsed)) return { status: 'ok', snapshot: parsed };
+  const snapshot = upgradeSnapshot(parsed);
+  if (snapshot) return { status: 'ok', snapshot };
 
   // Readable, but not something this build understands. Keep a copy before the
   // app carries on as a fresh install and its first save replaces the original.

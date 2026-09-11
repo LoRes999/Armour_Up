@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Client,
   CustomMovement,
@@ -25,8 +33,10 @@ import { MOVEMENT_CATALOGUE, SAMPLE_CLIENT_IDS, SEED_DAY_TYPES, buildSeed } from
 import { purchases } from './purchases';
 import { AppState } from 'react-native';
 import {
+  EMPTY_SYNC,
   Snapshot,
   SNAPSHOT_VERSION,
+  SyncSnapshot,
   clearSnapshot,
   flushSnapshot,
   readSnapshot,
@@ -195,6 +205,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // still opens, but nothing is written over the file for the rest of this
   // launch — writing the empty state is exactly how the data would be lost.
   const [saveBlocked, setSaveBlocked] = useState(false);
+  // Cloud sync's queue and bookkeeping. A ref rather than state: it is written
+  // in the same save as the data, and changing it must not re-render anything.
+  const syncRef = useRef<SyncSnapshot>(EMPTY_SYNC);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +230,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // what we restored stops cached() and the store disagreeing about
         // whether this person has paid.
         purchases.hydrate?.(saved.subscription);
+        syncRef.current = saved.sync;
       }
       setHydrated(true);
     });
@@ -240,6 +254,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       signedInClientId,
       appearance,
       subscription,
+      sync: syncRef.current,
     };
     saveSnapshot(snapshot);
   }, [
@@ -774,6 +789,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Deletion has to leave nothing behind. Waiting for the debounced write
         // of the emptied state would be a promise we cannot keep if the app is
         // killed in between, so the saved store goes now.
+        syncRef.current = EMPTY_SYNC;
         void clearSnapshot();
       },
 
