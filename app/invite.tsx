@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Clipboard, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +48,7 @@ export default function InviteClient() {
           headerLeft: () => (
             <Pressable
               onPress={close}
+              hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
@@ -121,13 +123,12 @@ function SentPanel({ client, onDone }: { client: Client; onDone: () => void }) {
   const firstName = client.name.split(' ')[0];
   const message = `${firstName} — here is your invite code for training with ${TRAINER_NAME}: ${client.inviteCode}`;
 
+  // React Native's own Clipboard is deprecated and slated for removal.
   const copy = () => {
-    try {
-      Clipboard.setString(client.inviteCode);
-      setCopied(true);
-    } catch {
+    Clipboard.setStringAsync(client.inviteCode)
+      .then((ok) => setCopied(ok))
       // Nothing to recover from: the code is selectable text right above.
-    }
+      .catch(() => {});
   };
 
   const share = () => {

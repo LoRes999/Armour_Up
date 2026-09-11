@@ -52,6 +52,8 @@ export default function MovementDetail() {
                 onPress={() =>
                   router.push({ pathname: '/movement/new', params: { edit: custom.id } })
                 }
+                hitSlop={8}
+                accessibilityRole="button"
                 style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}
               >
                 <Text style={{ fontSize: 16, color: p.accent }}>Edit</Text>

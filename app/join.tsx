@@ -73,7 +73,7 @@ export default function Join() {
           headerShown: true,
           title: '',
           headerLeft: () => (
-            <Pressable onPress={close}>
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
               <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
             </Pressable>
           ),

@@ -148,12 +148,12 @@ export default function Builder() {
           headerShown: true,
           title: 'Workout Builder',
           headerLeft: () => (
-            <Pressable onPress={close}>
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
               <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={close}>
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
               <Text style={{ color: p.accent, fontSize: 16, fontWeight: '700' }}>Save</Text>
             </Pressable>
           ),

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Constants from 'expo-constants';
 import { openHosted } from '../legal';
 import type { LegalDocId } from '../legalContent';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +24,14 @@ import { exportData } from '../exportData';
 function versionLabel(): string {
   const config = Constants.expoConfig;
   const version = config?.version ?? '1.0.0';
-  const build = config?.ios?.buildNumber ?? String(config?.android?.versionCode ?? '');
+  // Each platform numbers its builds separately. Reading iOS's first meant an
+  // Android phone showed the iOS build number whenever both were set.
+  const build =
+    Platform.OS === 'ios'
+      ? config?.ios?.buildNumber
+      : Platform.OS === 'android' && config?.android?.versionCode !== undefined
+        ? String(config.android.versionCode)
+        : undefined;
   return build ? `Version ${version} (build ${build})` : `Version ${version}`;
 }
 
