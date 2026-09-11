@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -18,6 +18,7 @@ import { metrics, usePalette } from '../../src/theme';
 import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/components/ui';
 import { confirm, notify } from '../../src/confirm';
 import { useConfirmDiscard } from '../../src/useConfirmDiscard';
+import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
 
 /**
  * The trainer writes a movement of their own. Whatever they save here is
@@ -37,6 +38,16 @@ export default function CustomMovementForm() {
   const [cueText, setCueText] = useState((existing?.cues ?? []).join('\n'));
   const [muscleText, setMuscleText] = useState((existing?.muscles ?? []).join(', '));
   const [photoUris, setPhotoUris] = useState<string[]>(existing?.photoUris ?? []);
+  // Photos copied in while this form was open. If the form closes without
+  // saving, their copies are deleted again.
+  const added = useRef<string[]>([]);
+  const finished = useRef(false);
+  useEffect(
+    () => () => {
+      if (!finished.current) discardPhotos(added.current);
+    },
+    []
+  );
 
   const changed =
     name !== (existing?.name ?? '') ||
@@ -77,14 +88,9 @@ export default function CustomMovementForm() {
    */
   const addPhoto = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        notify({
-          title: 'Photo access needed',
-          message: 'Allow photo access in Settings to attach pictures to a movement.',
-        });
-        return;
-      }
+      // No permission request first: the system photo picker runs outside the
+      // app and needs none, and asking anyway meant that refusing a prompt
+      // nobody needed blocked the picker entirely.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.7,
@@ -92,7 +98,9 @@ export default function CustomMovementForm() {
         selectionLimit: 4,
       });
       if (result.canceled) return;
-      setPhotoUris((current) => [...current, ...result.assets.map((asset) => asset.uri)]);
+      const kept = await Promise.all(result.assets.map((asset) => keepPhoto(asset.uri)));
+      added.current.push(...kept);
+      setPhotoUris((current) => [...current, ...kept]);
     } catch {
       notify({
         title: 'Could not open your photos',
@@ -103,6 +111,11 @@ export default function CustomMovementForm() {
 
   const save = () => {
     if (!trimmed || nameTaken) return;
+    finished.current = true;
+    // Photos taken off the movement, or added and then removed again.
+    discardPhotos(
+      [...(existing?.photoUris ?? []), ...added.current].filter((uri) => !photoUris.includes(uri))
+    );
     if (existing) {
       store.updateCustomMovement(existing.id, {
         name: trimmed,
@@ -131,6 +144,8 @@ export default function CustomMovementForm() {
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: () => {
+        finished.current = true;
+        discardPhotos([...existing.photoUris, ...added.current]);
         store.removeCustomMovement(existing.id);
         leave(() => router.back());
       },
@@ -231,7 +246,7 @@ export default function CustomMovementForm() {
                 {photoUris.map((uri, index) => (
                   <View key={`${uri}-${index}`}>
                     <Image
-                      source={{ uri }}
+                      source={{ uri: photoSource(uri) }}
                       style={{
                         width: 104,
                         height: 104,

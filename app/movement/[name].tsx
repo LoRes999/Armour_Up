@@ -6,6 +6,7 @@ import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { Card, EmptyState, Eyebrow } from '../../src/components/ui';
 import { movementInfo } from '../../src/movementLibrary';
+import { photoSource } from '../../src/photoStorage';
 
 /**
  * One movement, opened from anywhere its name appears — the library, a
@@ -65,10 +66,10 @@ export default function MovementDetail() {
       >
         {photos.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9 }}>
-            {photos.map((uri) => (
+            {photos.map((uri, index) => (
               <Image
-                key={uri}
-                source={{ uri }}
+                key={`${uri}-${index}`}
+                source={{ uri: photoSource(uri) }}
                 style={{
                   width: 240,
                   height: 170,

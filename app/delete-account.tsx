@@ -8,6 +8,7 @@ import { metrics, usePalette } from '../src/theme';
 import { Card, Eyebrow, PrimaryButton, Title, keyboardAware } from '../src/components/ui';
 import { TRAINER_NAME } from '../src/sampleData';
 import { confirm } from '../src/confirm';
+import { clearPhotos } from '../src/photoStorage';
 
 const PHRASE = 'DELETE';
 
@@ -50,6 +51,7 @@ export default function DeleteAccount() {
       destructive: true,
       onConfirm: () => {
         store.deleteAccount();
+        clearPhotos();
         router.replace('/');
       },
     });
