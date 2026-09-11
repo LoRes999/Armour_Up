@@ -47,8 +47,9 @@ export default function Join() {
    * reading clients[0] alone just silently filled the field with nothing.
    */
   const fillDemoCode = () => {
-    const existing = store.clients[0]?.inviteCode;
-    setCode(existing ?? store.loadSampleData());
+    // Always a sample client. Reading clients[0] could hand a developer a real
+    // client's code, and sign them into that person's account.
+    setCode(store.loadSampleData());
     // Put the keyboard away so the invitation that just appeared, and its
     // Accept button, are on screen. They used to render underneath it, so on
     // a phone this button looked as though it did nothing.

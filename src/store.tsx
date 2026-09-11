@@ -26,6 +26,14 @@ import { purchases } from './purchases';
 import { Snapshot, SNAPSHOT_VERSION, clearSnapshot, loadSnapshot, saveSnapshot } from './persistence';
 import { Streak, weekStreak as computeWeekStreak } from './rewards';
 
+/**
+ * The seed roster's ids, which are fixed in sampleData.ts. Sample clients are
+ * recognised by these exact ids and never by a prefix: invited clients get
+ * `client-…` ids too, so "starts with client-" counted every real client as
+ * sample data — and "Remove sample data" deleted them along with it.
+ */
+const SAMPLE_CLIENT_IDS: ReadonlySet<string> = new Set(buildSeed().clients.map((c) => c.id));
+
 export type Appearance = 'light' | 'dark' | 'system';
 
 interface StoreValue {
@@ -689,21 +697,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
        * without a real client, and how the client side can be reached at all —
        * signing in as a client needs an invite code from somewhere.
        */
-      hasSampleData: clients.some((c) => c.id.startsWith('client-')),
+      hasSampleData: clients.some((c) => SAMPLE_CLIENT_IDS.has(c.id)),
 
-      /** Returns the first client's invite code, so a caller can sign in as them. */
+      /**
+       * Adds the demo roster alongside whoever is already here, and returns a
+       * sample client's invite code so a caller can sign in as them. It used to
+       * replace the whole roster — and the trainer's own day types — outright.
+       * Loading it twice adds nothing the second time.
+       */
       loadSampleData: () => {
         const seed = buildSeed();
-        setClients(seed.clients);
-        setWorkouts(seed.workouts);
-        setDayTypes(seed.dayTypes);
-        return seed.clients[0]?.inviteCode ?? '';
+        const present = new Set(clients.map((c) => c.id));
+        const arriving = seed.clients.filter((c) => !present.has(c.id));
+        const arrivingIds = new Set(arriving.map((c) => c.id));
+        setClients((current) => [
+          ...current,
+          ...arriving.filter((c) => !current.some((existing) => existing.id === c.id)),
+        ]);
+        setWorkouts((current) => [
+          ...current,
+          ...seed.workouts.filter((w) => arrivingIds.has(w.clientId)),
+        ]);
+        setDayTypes((current) => [
+          ...current,
+          ...seed.dayTypes.filter((d) => !current.some((existing) => existing.id === d.id)),
+        ]);
+        const first = seed.clients[0];
+        if (!first) return '';
+        // Already loaded once? Hand back the code the store actually holds.
+        return clients.find((c) => c.id === first.id)?.inviteCode ?? first.inviteCode;
       },
 
+      /** Takes out the sample clients and their sessions, and nothing else. */
       clearSampleData: () => {
-        setClients([]);
-        setWorkouts([]);
-        setDayTypes(SEED_DAY_TYPES);
+        setClients((current) => current.filter((c) => !SAMPLE_CLIENT_IDS.has(c.id)));
+        setWorkouts((current) => current.filter((w) => !SAMPLE_CLIENT_IDS.has(w.clientId)));
       },
 
       /**
