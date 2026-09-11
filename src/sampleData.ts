@@ -401,3 +401,12 @@ export function buildSeed(): { clients: Client[]; workouts: Workout[]; dayTypes:
 
   return { clients, workouts, dayTypes: SEED_DAY_TYPES };
 }
+
+/**
+ * The seed roster's ids, which are fixed above. Sample clients are recognised
+ * by these exact ids and never by a prefix: invited clients get `client-…` ids
+ * too, so "starts with client-" counted every real client as sample data — and
+ * "Remove sample data" deleted them along with it. Cloud sync uses the same set
+ * to keep sample data on the phone.
+ */
+export const SAMPLE_CLIENT_IDS: ReadonlySet<string> = new Set(buildSeed().clients.map((c) => c.id));

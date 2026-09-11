@@ -21,7 +21,7 @@ import {
   normaliseCode,
   topLoggedWeight,
 } from './models';
-import { MOVEMENT_CATALOGUE, SEED_DAY_TYPES, buildSeed } from './sampleData';
+import { MOVEMENT_CATALOGUE, SAMPLE_CLIENT_IDS, SEED_DAY_TYPES, buildSeed } from './sampleData';
 import { purchases } from './purchases';
 import { AppState } from 'react-native';
 import {
@@ -33,14 +33,6 @@ import {
   saveSnapshot,
 } from './persistence';
 import { Streak, weekStreak as computeWeekStreak } from './rewards';
-
-/**
- * The seed roster's ids, which are fixed in sampleData.ts. Sample clients are
- * recognised by these exact ids and never by a prefix: invited clients get
- * `client-…` ids too, so "starts with client-" counted every real client as
- * sample data — and "Remove sample data" deleted them along with it.
- */
-const SAMPLE_CLIENT_IDS: ReadonlySet<string> = new Set(buildSeed().clients.map((c) => c.id));
 
 export type Appearance = 'light' | 'dark' | 'system';
 
