@@ -15,6 +15,7 @@ import {
   unitName,
 } from '../src/models';
 import { TRAINER_NAME } from '../src/sampleData';
+import { useConfirmDiscard } from '../src/useConfirmDiscard';
 
 export default function InviteClient() {
   const p = usePalette();
@@ -29,6 +30,12 @@ export default function InviteClient() {
   const [invited, setInvited] = useState<Client | null>(null);
 
   const canSend = name.trim().length > 0 && email.includes('@');
+
+  // Once the invitation exists there is nothing left to lose by closing.
+  useConfirmDiscard(
+    !invited && (name.trim().length > 0 || email.trim().length > 0),
+    "The name and email you've typed will be lost."
+  );
 
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>

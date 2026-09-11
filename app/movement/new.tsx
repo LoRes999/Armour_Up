@@ -17,6 +17,7 @@ import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/components/ui';
 import { confirm, notify } from '../../src/confirm';
+import { useConfirmDiscard } from '../../src/useConfirmDiscard';
 
 /**
  * The trainer writes a movement of their own. Whatever they save here is
@@ -36,6 +37,17 @@ export default function CustomMovementForm() {
   const [cueText, setCueText] = useState((existing?.cues ?? []).join('\n'));
   const [muscleText, setMuscleText] = useState((existing?.muscles ?? []).join(', '));
   const [photoUris, setPhotoUris] = useState<string[]>(existing?.photoUris ?? []);
+
+  const changed =
+    name !== (existing?.name ?? '') ||
+    description !== (existing?.description ?? '') ||
+    cueText !== (existing?.cues ?? []).join('\n') ||
+    muscleText !== (existing?.muscles ?? []).join(', ') ||
+    photoUris.join('\n') !== (existing?.photoUris ?? []).join('\n');
+  const leave = useConfirmDiscard(
+    changed,
+    existing ? 'Your edits to this movement will be lost.' : 'This movement will not be added to your library.'
+  );
 
   const trimmed = name.trim();
   /**
@@ -108,7 +120,7 @@ export default function CustomMovementForm() {
         photoUris,
       });
     }
-    router.back();
+    leave(() => router.back());
   };
 
   const confirmDelete = () => {
@@ -120,7 +132,7 @@ export default function CustomMovementForm() {
       destructive: true,
       onConfirm: () => {
         store.removeCustomMovement(existing.id);
-        router.back();
+        leave(() => router.back());
       },
     });
   };
