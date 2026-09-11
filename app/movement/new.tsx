@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,6 +27,7 @@ import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
  */
 export default function CustomMovementForm() {
   const p = usePalette();
+  const router = useRouter();
   const close = useClose('/(trainer)/library');
   const store = useStore();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -148,7 +149,9 @@ export default function CustomMovementForm() {
         finished.current = true;
         discardPhotos([...existing.photoUris, ...added.current]);
         store.removeCustomMovement(existing.id);
-        leave(close);
+        // Past the movement's own page too: closing just this form landed on
+        // the detail page of a movement that no longer exists.
+        leave(() => router.dismissTo('/(trainer)/library'));
       },
     });
   };

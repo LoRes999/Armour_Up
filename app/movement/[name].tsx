@@ -26,7 +26,10 @@ export default function MovementDetail() {
   if (!builtIn && !custom) {
     return (
       <>
-        <Stack.Screen options={{ title: name ?? 'Movement' }} />
+        {/* headerRight is cleared explicitly: options merge, so the Edit button
+            from before the movement was deleted would otherwise stay, still
+            pointing at the deleted movement. */}
+        <Stack.Screen options={{ title: name ?? 'Movement', headerRight: () => null }} />
         <EmptyState
           icon="barbell-outline"
           title="Nothing written yet"
