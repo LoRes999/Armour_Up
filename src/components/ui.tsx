@@ -279,11 +279,13 @@ export function DashedButton({
   onPress,
   color,
   height = metrics.hitTarget,
+  icon = 'add',
 }: {
   title: string;
   onPress: () => void;
   color?: string;
   height?: number;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   const p = usePalette();
   return (
@@ -304,7 +306,7 @@ export function DashedButton({
         gap: 6,
       }}
     >
-      <Ionicons name="add" size={15} color={color ?? p.accent} />
+      <Ionicons name={icon} size={15} color={color ?? p.accent} />
       <Text style={{ fontSize: 13, fontWeight: '800', color: color ?? p.accent }}>{title}</Text>
     </Pressable>
   );

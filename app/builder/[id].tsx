@@ -262,18 +262,8 @@ export default function Builder() {
                   {exercise.sets.map((set, setIndex) => {
                     const active = setIndex === exercise.sets.length - 1;
                     return (
-                      <Pressable
+                      <View
                         key={set.id}
-                        onLongPress={() => {
-                          if (exercise.sets.length <= 1) return;
-                          confirm({
-                            title: 'Delete set?',
-                            message: `Set ${setIndex + 1} of ${exercise.movementName}`,
-                            confirmLabel: 'Delete',
-                            destructive: true,
-                            onConfirm: () => store.removeSet(workout.id, position, setIndex),
-                          });
-                        }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}
                       >
                         <View
@@ -333,20 +323,36 @@ export default function Builder() {
                             onChange={(next) => store.setTargetReps(workout.id, position, setIndex, next)}
                           />
                         </View>
-                      </Pressable>
+                      </View>
                     );
                   })}
 
-                  <View style={{ marginTop: 2 }}>
-                    <DashedButton
-                      title="Add set"
-                      onPress={() => store.addSet(workout.id, position)}
-                      height={40}
-                    />
+                  {/* Deleting a set used to be a long-press on the row, but the
+                      steppers filling the row caught the touch first, so it only
+                      worked on the tiny set number. Removing the last set is the
+                      mirror of adding one, and it sits right beside it. */}
+                  <View style={{ marginTop: 2, flexDirection: 'row', gap: 8 }}>
+                    {exercise.sets.length > 1 ? (
+                      <View style={{ flex: 1 }}>
+                        <DashedButton
+                          title="Remove set"
+                          icon="remove"
+                          color={p.dim}
+                          onPress={() =>
+                            store.removeSet(workout.id, position, exercise.sets.length - 1)
+                          }
+                          height={40}
+                        />
+                      </View>
+                    ) : null}
+                    <View style={{ flex: 1 }}>
+                      <DashedButton
+                        title="Add set"
+                        onPress={() => store.addSet(workout.id, position)}
+                        height={40}
+                      />
+                    </View>
                   </View>
-                  <Text style={{ fontSize: 10, color: p.dim, textAlign: 'center' }}>
-                    Long-press a set to delete it
-                  </Text>
                 </View>
               ) : null}
             </Card>
