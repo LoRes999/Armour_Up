@@ -14,6 +14,7 @@ import {
   PrimaryButton,
   RepStepper,
   WeightStepper,
+  keyboardAware,
 } from '../../src/components/ui';
 import { DayTypeChip, DayTypeSheet } from '../../src/components/DayTypePicker';
 import {
@@ -159,7 +160,7 @@ export default function Builder() {
         }}
       />
 
-      <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 24, gap: 12 }}>
+      <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 24, gap: 12 }}>
         <TextInput
           value={workout.name}
           onChangeText={(text) => store.renameWorkout(workout.id, text)}
@@ -463,7 +464,7 @@ function MovementPicker({
           />
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 8 }}>
+        <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, gap: 8 }}>
           {results.map((movement) => (
             <Pressable key={movement} onPress={() => onPick(movement)}>
               <Card

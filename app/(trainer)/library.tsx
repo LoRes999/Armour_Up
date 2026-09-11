@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
-import { Card, DashedButton, EmptyState, Title } from '../../src/components/ui';
+import { Card, DashedButton, EmptyState, Title, keyboardAware } from '../../src/components/ui';
 import { movementInfo } from '../../src/movementLibrary';
 
 export default function Library() {
@@ -23,7 +23,7 @@ export default function Library() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: p.background }}>
       <ScrollView
         contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 32, gap: 8 }}
-        keyboardShouldPersistTaps="handled"
+        {...keyboardAware}
       >
         <Title>Library</Title>
 

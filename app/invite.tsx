@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
 import { metrics, usePalette } from '../src/theme';
-import { Card, Eyebrow, PrimaryButton, SegmentedPicker, Title } from '../src/components/ui';
+import { Card, Eyebrow, PrimaryButton, SegmentedPicker, Title, keyboardAware } from '../src/components/ui';
 import {
   Client,
   DEFAULT_UNIT,
@@ -51,7 +51,7 @@ export default function InviteClient() {
       {invited ? (
         <SentPanel client={invited} onDone={() => router.back()} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 16 }}>
+        <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, gap: 16 }}>
           <View style={{ gap: 8 }}>
             <Eyebrow>WHO ARE YOU COACHING?</Eyebrow>
             <Card radius={15}>
@@ -130,7 +130,7 @@ function SentPanel({ client, onDone }: { client: Client; onDone: () => void }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 18 }}>
+    <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, gap: 18 }}>
       <View style={{ alignItems: 'center', gap: 12, paddingTop: 16 }}>
         <View
           style={{

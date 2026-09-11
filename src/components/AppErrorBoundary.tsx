@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View, useColorScheme } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View, useColorScheme } from 'react-native';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { darkPalette, lightPalette, metrics } from '../theme';
@@ -8,12 +8,14 @@ import { darkPalette, lightPalette, metrics } from '../theme';
  * The last thing between a thrown error and a white screen.
  *
  * There was no boundary anywhere and no crash reporting, so any unhandled throw
- * left the app blank with no way out but force-quitting it — and since nothing
- * persisted, force-quitting also lost the session.
+ * left the app blank with no way out but force-quitting it.
  *
  * It reads the OS colour scheme rather than usePalette: expo-router renders
  * this *instead of* the root layout, so StoreProvider is not mounted and
- * useStore would throw from inside the thing meant to catch throws.
+ * useStore would throw from inside the thing meant to catch throws. For the
+ * same reason it cannot know whether a coach or a client is looking at it, so
+ * the wording has to be right for both — it used to tell trainers to "send the
+ * detail below to your coach".
  */
 export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const scheme = useColorScheme();
@@ -36,8 +38,8 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         </Text>
 
         <Text style={{ fontSize: 14, lineHeight: 21, color: p.dim }}>
-          Your training data is saved on this device and has not been lost. Try again, and if it
-          keeps happening, please send the detail below to your coach.
+          Your training data is saved on this device and hasn't been lost. Try again, and if it
+          keeps happening, take a screenshot of this screen and send it to the app's developer.
         </Text>
 
         <Pressable
@@ -57,7 +59,7 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         </Pressable>
 
         {/* The only diagnostics this app has. There is no crash reporter, so if
-            the user cannot read the error to somebody, nobody ever sees it. */}
+            nobody can read the error out, nobody ever sees it. */}
         <View
           style={{
             marginTop: 10,
@@ -68,7 +70,14 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         >
           <Text
             selectable
-            style={{ fontSize: 11, lineHeight: 16, color: p.dim, fontFamily: 'monospace' }}
+            style={{
+              fontSize: 11,
+              lineHeight: 16,
+              color: p.dim,
+              // 'monospace' is an Android family name; iOS has no font by that
+              // name and silently falls back to the proportional system face.
+              fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }),
+            }}
           >
             {error?.message ?? 'No detail available.'}
           </Text>

@@ -62,17 +62,29 @@ function Root() {
       >
         <Stack.Screen name="index" />
 
+        {/* Every pop-up that shows a header declares it HERE, not from inside the
+            screen. On iOS, react-native-screens rebuilds a modal from scratch when its
+            header visibility changes, throwing away all local state. With the root
+            default of headerShown: false, a screen switching it on for itself was a
+            change: it wiped the demo code and the exercise picker, and in the live
+            session the rebuilt keypad Modals fed a "Maximum update depth" crash. */}
         <Stack.Protected guard={trainerReady}>
           <Stack.Screen name="(trainer)" />
           {/* Creation and logging flows are modals, so they correctly drop the tab bar. */}
-          <Stack.Screen name="builder/[id]" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="session/[id]" options={{ presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="invite" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="builder/[id]" options={{ presentation: 'modal', headerShown: true }} />
+          <Stack.Screen
+            name="session/[id]"
+            options={{ presentation: 'fullScreenModal', headerShown: true }}
+          />
+          <Stack.Screen name="invite" options={{ presentation: 'modal', headerShown: true }} />
         </Stack.Protected>
 
         <Stack.Protected guard={clientReady}>
           <Stack.Screen name="(client)" />
-          <Stack.Screen name="solo/[id]" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen
+            name="solo/[id]"
+            options={{ presentation: 'fullScreenModal', headerShown: true }}
+          />
         </Stack.Protected>
         {/* Reference, reachable from any movement name on either side of the app. */}
         <Stack.Screen
@@ -83,7 +95,7 @@ function Root() {
           name="movement/new"
           options={{ presentation: 'modal', headerShown: true }}
         />
-        <Stack.Screen name="join" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="join" options={{ presentation: 'modal', headerShown: true }} />
         {/* Terms and Privacy. Outside both guards, because the paywall links to
             them before anybody has signed in or paid. */}
         <Stack.Screen

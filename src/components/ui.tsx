@@ -9,6 +9,9 @@ import {
   TextStyle,
   View,
   ViewStyle,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette, metrics, usePalette } from '../theme';
@@ -307,6 +310,21 @@ export function DashedButton({
   );
 }
 
+/**
+ * Spread onto any ScrollView that holds a text field.
+ *
+ * Without these, on a phone: the first tap after typing only dismisses the
+ * keyboard (so every button needed two taps), the keyboard sat on top of
+ * whatever was below the field, and the return key was the only way to put it
+ * away. Swiping down now hides it — interactively on iOS, on drag on Android —
+ * and on iOS the content moves up above the keyboard.
+ */
+export const keyboardAware = {
+  keyboardShouldPersistTaps: 'handled',
+  keyboardDismissMode: Platform.OS === 'ios' ? 'interactive' : 'on-drag',
+  automaticallyAdjustKeyboardInsets: true,
+} as const;
+
 // MARK: - Steppers
 //
 // Minus and plus for quick nudges; tapping the number opens a keypad for a big
@@ -346,8 +364,11 @@ export function WeightStepper({
   };
 
   const commit = () => {
-    const parsed = Number(draft.replace(',', '.'));
-    if (!Number.isNaN(parsed)) emit(parsed);
+    // An emptied box means "never mind", not zero. Number('') is 0, so clearing
+    // the field and pressing Set used to write a 0 kg set.
+    const text = draft.trim().replace(',', '.');
+    const parsed = Number(text);
+    if (text !== '' && !Number.isNaN(parsed)) emit(parsed);
     setEditing(false);
   };
 
@@ -415,8 +436,14 @@ export function WeightStepper({
       </View>
 
       <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
+        {/* The iOS decimal pad has no return key, so Set is the only way to
+            commit — it has to sit above the keyboard, not under it. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
         <Pressable
-          onPress={() => setEditing(false)}
+          onPress={() => (Keyboard.isVisible() ? Keyboard.dismiss() : setEditing(false))}
           style={{ flex: 1, backgroundColor: '#0008', alignItems: 'center', justifyContent: 'center', padding: 32 }}
         >
           <Pressable style={{ width: '100%' }} onPress={() => {}}>
@@ -456,6 +483,7 @@ export function WeightStepper({
             </Card>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

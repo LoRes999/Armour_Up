@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View, Keyboard } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
 import { metrics, usePalette } from '../src/theme';
-import { Avatar, Card, Eyebrow, PrimaryButton, SegmentedPicker, Title } from '../src/components/ui';
+import { Avatar, Card, Eyebrow, PrimaryButton, SegmentedPicker, Title, keyboardAware } from '../src/components/ui';
 import {
   CODE_LENGTH,
   DEFAULT_UNIT,
@@ -46,9 +46,13 @@ export default function Join() {
    * the sample roster first is what makes this button work from a cold start —
    * reading clients[0] alone just silently filled the field with nothing.
    */
-  const useDemoCode = () => {
+  const fillDemoCode = () => {
     const existing = store.clients[0]?.inviteCode;
     setCode(existing ?? store.loadSampleData());
+    // Put the keyboard away so the invitation that just appeared, and its
+    // Accept button, are on screen. They used to render underneath it, so on
+    // a phone this button looked as though it did nothing.
+    Keyboard.dismiss();
   };
 
   const accept = () => {
@@ -74,7 +78,7 @@ export default function Join() {
       />
 
       <ScrollView
-        keyboardShouldPersistTaps="handled"
+        {...keyboardAware}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 18 }}
       >
         <Title size={30}>Enter your invite code.</Title>
@@ -117,7 +121,7 @@ export default function Join() {
             client's only door is a code they have no way of knowing. */}
         {__DEV__ && !match ? (
           <Pressable
-            onPress={useDemoCode}
+            onPress={fillDemoCode}
             accessibilityRole="button"
             style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
           >

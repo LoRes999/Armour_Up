@@ -120,6 +120,26 @@ export function milestoneHeadline(count: number): string {
   return `${count} sessions strong.`;
 }
 
+/**
+ * The same moment in the trainer's voice. The lines above talk to the person
+ * who lifted — "Your first session is done." — which read wrongly on the
+ * trainer's card about somebody else. The standard pool is neutral, so it is
+ * kept as it is.
+ */
+export function trainerHeadline(reward: SessionReward, clientFirstName: string): string {
+  if (reward.tier === 'milestone' && reward.milestone !== undefined) {
+    return reward.milestone === 1
+      ? `${clientFirstName}'s first session is in the books.`
+      : `${clientFirstName}'s ${ordinal(reward.milestone)} session.`;
+  }
+  if (reward.tier === 'pr') {
+    return reward.prs.length > 1
+      ? `${reward.prs.length} new records for ${clientFirstName}.`
+      : `A new record for ${clientFirstName}.`;
+  }
+  return reward.headline;
+}
+
 export function ordinal(n: number): string {
   const tens = n % 100;
   if (tens >= 11 && tens <= 13) return `${n}th`;

@@ -10,6 +10,7 @@ import {
   EmptyState,
   PrimaryButton,
   SegmentedPicker,
+  keyboardAware,
 } from '../../../src/components/ui';
 import { Client, initialsOf } from '../../../src/models';
 
@@ -35,6 +36,7 @@ export default function Roster() {
 
   return (
     <ScrollView
+      {...keyboardAware}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: p.background }}
       contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 32, gap: 12 }}

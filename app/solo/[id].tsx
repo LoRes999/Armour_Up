@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import {
   RepStepper,
   WeightStepper,
 } from '../../src/components/ui';
+import { ElapsedClock, elapsedSeconds } from '../../src/components/SessionClock';
 import {
   DEFAULT_UNIT,
   exerciseIsComplete,
@@ -33,6 +34,9 @@ import { sessionReward } from '../../src/rewards';
  * There is no cursor here. The trainer's cursor assumes a second person driving
  * the session; someone lifting alone supersets, skips and doubles back, so every
  * set stays open and the numbers start from what they lifted last time.
+ *
+ * The running clock is its own component, so this screen only re-renders when
+ * a set changes — see src/components/SessionClock for why that matters on iOS.
  */
 export default function SoloSession() {
   const p = usePalette();
@@ -44,20 +48,12 @@ export default function SoloSession() {
   const workout = store.workout(id);
   const client = workout ? store.client(workout.clientId) : undefined;
   const unit = client?.unit ?? DEFAULT_UNIT;
-  // The tick only forces a re-render; the number itself is derived from the
-  // workout's own start time, so leaving this screen and returning to it — which
-  // the Today card invites — carries on rather than restarting from zero. That
-  // reset used to record a forty-minute session as one minute.
+  // Derived from the workout's own start time, so leaving this screen and
+  // returning to it — which the Today card invites — carries on rather than
+  // restarting from zero. That reset used to record a forty-minute session as
+  // one minute.
   const [mountedAt] = useState(() => Date.now());
-  const [, tick] = useReducer((n: number) => n + 1, 0);
-
-  useEffect(() => {
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const startedAt = workout?.startedAt ? Date.parse(workout.startedAt) : mountedAt;
-  const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
 
   /**
    * A full-screen modal has no swipe dismiss, so the header X is the only way
@@ -66,21 +62,46 @@ export default function SoloSession() {
    */
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(client)'));
 
-  const closeButton = () => (
-    <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close session">
-      <Ionicons name="close" size={24} color={p.dim} />
-    </Pressable>
+  // Header buttons call through a ref so the options can be memoised on what
+  // the header shows, rather than rebuilt on every render.
+  const actions = useRef({ close, confirmFinish: () => {} });
+  actions.current.close = close;
+
+  const isSoloWorkout = workout !== undefined && workout.loggedBy === 'client';
+  const workoutName = workout?.name;
+  const headerOptions = useMemo(
+    () => ({
+      title: isSoloWorkout ? (workoutName ?? 'Session') : 'Session',
+      headerLeft: () => (
+        <Pressable
+          onPress={() => actions.current.close()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Close session"
+        >
+          <Ionicons name="close" size={24} color={p.dim} />
+        </Pressable>
+      ),
+      headerRight: isSoloWorkout
+        ? () => (
+            <Pressable
+              onPress={() => actions.current.confirmFinish()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Finish session"
+            >
+              <Ionicons name="flag-outline" size={22} color={p.accent} />
+            </Pressable>
+          )
+        : undefined,
+    }),
+    [isSoloWorkout, workoutName, p.dim, p.accent]
   );
 
   if (!workout || workout.loggedBy !== 'client') {
-    // The header has to be configured here too. The root layout sets
-    // headerShown: false, so returning early without it renders a header-less
-    // full-screen modal with no way out at all.
     return (
       <>
-        <Stack.Screen
-          options={{ headerShown: true, title: 'Session', headerLeft: closeButton }}
-        />
+        <Stack.Screen options={headerOptions} />
         <EmptyState
           icon="barbell-outline"
           title="Session not found"
@@ -90,14 +111,11 @@ export default function SoloSession() {
     );
   }
 
-  const timeString = (seconds: number) =>
-    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-
   const done = loggedSets(workout);
 
   const finish = () => {
     const finishedId = workout.id;
-    const minutes = Math.max(1, Math.round(elapsed / 60));
+    const minutes = Math.max(1, Math.round(elapsedSeconds(startedAt) / 60));
     // Worked out before finishWorkout, while the store still holds the old
     // records: "was 85, now 90" needs the 85.
     const reward = client
@@ -143,6 +161,7 @@ export default function SoloSession() {
       destructive: true,
       onConfirm: finish,
     });
+  actions.current.confirmFinish = confirmFinish;
 
   const confirmDiscard = () =>
     confirm({
@@ -162,23 +181,7 @@ export default function SoloSession() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: workout.name,
-          headerLeft: closeButton,
-          headerRight: () => (
-            <Pressable
-              onPress={confirmFinish}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Finish session"
-            >
-              <Ionicons name="flag-outline" size={22} color={p.accent} />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 5 }}>
@@ -195,9 +198,7 @@ export default function SoloSession() {
           ))}
         </View>
 
-        <Text style={{ fontSize: 11, fontWeight: '700', color: p.accent, textAlign: 'center' }}>
-          {`● ${timeString(elapsed)} elapsed · training solo`}
-        </Text>
+        <ElapsedClock startedAt={startedAt} suffix=" · training solo" />
 
         {workout.exercises.map((exercise, exerciseIndex) => (
           <Card key={exercise.id} radius={17} style={{ padding: 13, gap: 10 }}>
@@ -243,6 +244,9 @@ export default function SoloSession() {
                       it. Tapping logs the prescribed numbers, or clears them. */}
                   <Pressable
                     onPress={() => store.toggleSetLogged(workout.id, exerciseIndex, setIndex)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: logged }}
+                    accessibilityLabel={`Set ${setIndex + 1}`}
                     style={{
                       width: 34,
                       height: metrics.hitTarget,
@@ -293,7 +297,6 @@ export default function SoloSession() {
                       }
                     />
                   </View>
-
                 </View>
               );
             })}
@@ -316,6 +319,7 @@ export default function SoloSession() {
           />
           <Pressable
             onPress={confirmDiscard}
+            accessibilityRole="button"
             style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 13, fontWeight: '700', color: p.danger }}>

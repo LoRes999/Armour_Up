@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
 import { metrics, usePalette } from '../src/theme';
-import { Card, Eyebrow, PrimaryButton, Title } from '../src/components/ui';
+import { Card, Eyebrow, PrimaryButton, Title, keyboardAware } from '../src/components/ui';
 import { TRAINER_NAME } from '../src/sampleData';
 import { confirm } from '../src/confirm';
 
@@ -56,7 +56,7 @@ export default function DeleteAccount() {
 
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 16 }}>
+      <ScrollView {...keyboardAware} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 16 }}>
         <View
           style={{
             width: 52,

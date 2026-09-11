@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,13 @@ import {
   RepStepper,
   WeightStepper,
 } from '../../src/components/ui';
+import {
+  ElapsedClock,
+  LiveText,
+  RestBanner,
+  clockString,
+  elapsedSeconds,
+} from '../../src/components/SessionClock';
 import {
   exerciseIsComplete,
   DEFAULT_UNIT,
@@ -32,6 +39,11 @@ const REST_SECONDS = 90;
  * The trainer logs here while coaching. "Log set" records the set, starts the
  * rest countdown, and advances — the cursor is derived from what is already
  * logged, so advancing needs no separate state to drift out of sync.
+ *
+ * Nothing on this screen changes every second any more. The running clock and
+ * the rest countdown are their own components (src/components/SessionClock),
+ * so the screen — and the header options it hands to the navigator — only
+ * re-render when something the trainer did changes them.
  */
 export default function LiveSession() {
   const p = usePalette();
@@ -46,11 +58,11 @@ export default function LiveSession() {
 
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(0);
-  const [rest, setRest] = useState(0);
+  // When the current rest ends, as a timestamp — see RestBanner for why.
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   // Derived from the workout's own start time rather than counted from mount, so
   // reopening a session already in progress resumes its clock.
   const [mountedAt] = useState(() => Date.now());
-  const [, tick] = useReducer((n: number) => n + 1, 0);
   const syncedFor = useRef<string>('');
 
   // First unlogged set, in order. Undefined once everything is logged.
@@ -63,18 +75,11 @@ export default function LiveSession() {
   }
   const cursorKey = cursor ? `${cursor.exercise}-${cursor.set}` : 'done';
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      tick();
-      setRest((value) => (value > 0 ? value - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const startedAt = workout?.startedAt ? Date.parse(workout.startedAt) : mountedAt;
-  const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
 
-  // Pull the drafts from the prescription whenever the cursor moves.
+  // Pull the drafts from the prescription whenever the cursor moves. Keyed on
+  // the cursor's position alone: `cursor` itself is a new object every render,
+  // and listing it made this effect run on every render of the screen.
   useEffect(() => {
     if (!workout || !cursor) return;
     if (syncedFor.current === cursorKey) return;
@@ -83,30 +88,57 @@ export default function LiveSession() {
     syncedFor.current = cursorKey;
     setWeight(target.targetWeight);
     setReps(target.targetReps);
-  }, [cursorKey, workout, cursor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursorKey]);
 
   /**
    * A full-screen modal has no swipe dismiss, so the header X is the only way
    * out. Falling back to the tabs matters for a cold deep link, where there is
    * nothing on the stack to pop.
    */
-  const close = () => (router.canGoBack() ? router.back() : router.replace('/(trainer)/clients'));
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/(trainer)/today'));
 
-  const closeButton = () => (
-    <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close session">
-      <Ionicons name="close" size={24} color={p.dim} />
-    </Pressable>
+  // The header's buttons call through a ref, so the options object can be
+  // memoised on what the header actually shows. Inline functions made it a new
+  // object on every render, and expo-router applies options on every change.
+  const actions = useRef({ close, confirmFinish: () => {} });
+  actions.current.close = close;
+
+  const workoutName = workout?.name;
+  const hasWorkout = workout !== undefined;
+  const headerOptions = useMemo(
+    () => ({
+      title: workoutName ?? 'Session',
+      headerLeft: () => (
+        <Pressable
+          onPress={() => actions.current.close()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Close session"
+        >
+          <Ionicons name="close" size={24} color={p.dim} />
+        </Pressable>
+      ),
+      headerRight: hasWorkout
+        ? () => (
+            <Pressable
+              onPress={() => actions.current.confirmFinish()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Finish session"
+            >
+              <Ionicons name="flag-outline" size={22} color={p.accent} />
+            </Pressable>
+          )
+        : undefined,
+    }),
+    [workoutName, hasWorkout, p.dim, p.accent]
   );
 
   if (!workout) {
-    // The header has to be configured here too. The root layout sets
-    // headerShown: false, so returning early without it renders a header-less
-    // full-screen modal with no way out at all.
     return (
       <>
-        <Stack.Screen
-          options={{ headerShown: true, title: 'Session', headerLeft: closeButton }}
-        />
+        <Stack.Screen options={headerOptions} />
         <EmptyState
           icon="barbell-outline"
           title="Session not found"
@@ -116,9 +148,6 @@ export default function LiveSession() {
     );
   }
 
-  const timeString = (seconds: number) =>
-    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-
   /**
    * Used to drop the trainer back on Today, where the card they had just
    * finished simply vanished. Now it lands with the session's payoff over it —
@@ -126,7 +155,7 @@ export default function LiveSession() {
    * is something to turn round and show.
    */
   const finish = () => {
-    const minutes = Math.max(1, Math.round(elapsed / 60));
+    const minutes = Math.max(1, Math.round(elapsedSeconds(startedAt) / 60));
     const reward = client
       ? sessionReward({
           workout,
@@ -137,7 +166,7 @@ export default function LiveSession() {
         })
       : null;
     store.finishWorkout(workout.id, minutes);
-    router.back();
+    close();
     if (reward && client) {
       celebrate({
         kind: 'session',
@@ -159,6 +188,7 @@ export default function LiveSession() {
       destructive: true,
       onConfirm: finish,
     });
+  actions.current.confirmFinish = confirmFinish;
 
   const exercise = cursor ? workout.exercises[cursor.exercise] : undefined;
   const target = cursor && exercise ? exercise.sets[cursor.set] : undefined;
@@ -174,23 +204,7 @@ export default function LiveSession() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: workout.name,
-          headerLeft: closeButton,
-          headerRight: () => (
-            <Pressable
-              onPress={confirmFinish}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Finish session"
-            >
-              <Ionicons name="flag-outline" size={22} color={p.accent} />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
 
       <ScrollView contentContainerStyle={{ padding: metrics.screenPadding, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 5 }}>
@@ -211,9 +225,7 @@ export default function LiveSession() {
           ))}
         </View>
 
-        <Text style={{ fontSize: 11, fontWeight: '700', color: p.accent, textAlign: 'center' }}>
-          {`● ${timeString(elapsed)} elapsed`}
-        </Text>
+        <ElapsedClock startedAt={startedAt} />
 
         {cursor && exercise && target ? (
           <>
@@ -271,37 +283,7 @@ export default function LiveSession() {
               </View>
             </Card>
 
-            {rest > 0 ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 14,
-                  backgroundColor: p.surfaceAlt,
-                }}
-              >
-                <Ionicons name="timer-outline" size={17} color={p.accent} />
-                <View style={{ flex: 1, gap: 5 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: p.text }}>Rest</Text>
-                  <View style={{ height: 3, borderRadius: 2, backgroundColor: p.border }}>
-                    <View
-                      style={{
-                        height: 3,
-                        borderRadius: 2,
-                        backgroundColor: p.accent,
-                        width: `${(rest / REST_SECONDS) * 100}%`,
-                      }}
-                    />
-                  </View>
-                </View>
-                <Numeric size={17} color={p.accent}>
-                  {timeString(rest)}
-                </Numeric>
-              </View>
-            ) : null}
+            {restEndsAt !== null ? <RestBanner endsAt={restEndsAt} total={REST_SECONDS} /> : null}
 
             <View style={{ gap: 8, marginTop: 4 }}>
               <Eyebrow>LOGGED</Eyebrow>
@@ -332,9 +314,14 @@ export default function LiveSession() {
           <Card radius={22} style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
             <Ionicons name="checkmark-circle" size={42} color={p.success} />
             <Text style={{ fontSize: 20, fontWeight: '800', color: p.text }}>Every set logged</Text>
-            <Text style={{ fontSize: 13, color: p.dim }}>
-              {`${loggedSets(workout)} sets · ${workout.exercises.length} exercises · ${timeString(elapsed)}`}
-            </Text>
+            <LiveText
+              style={{ fontSize: 13, color: p.dim }}
+              render={() =>
+                `${loggedSets(workout)} sets · ${workout.exercises.length} exercises · ${clockString(
+                  elapsedSeconds(startedAt)
+                )}`
+              }
+            />
           </Card>
         )}
       </ScrollView>
@@ -367,7 +354,7 @@ export default function LiveSession() {
             icon="checkmark"
             onPress={() => {
               store.logSet(workout.id, cursor.exercise, cursor.set, weight, reps);
-              setRest(REST_SECONDS);
+              setRestEndsAt(Date.now() + REST_SECONDS * 1000);
               // The cursor recomputes from the logged state, so the screen
               // advances on its own and the drafts reload.
             }}

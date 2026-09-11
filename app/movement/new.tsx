@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
-import { DashedButton, Eyebrow, PrimaryButton } from '../../src/components/ui';
+import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/components/ui';
 import { confirm, notify } from '../../src/confirm';
 
 /**
@@ -149,11 +149,14 @@ export default function CustomMovementForm() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // iOS moves the content with the ScrollView's own keyboard insets
+        // (keyboardAware). Padding here as well pushed it up twice — and, with
+        // no header offset, by the wrong amount.
+        behavior={Platform.OS === 'ios' ? undefined : 'height'}
       >
         <ScrollView
           contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 28, gap: 16 }}
-          keyboardShouldPersistTaps="handled"
+          {...keyboardAware}
         >
           <View style={{ gap: 7 }}>
             <Eyebrow>MOVEMENT NAME</Eyebrow>

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePalette } from '../theme';
 import { Card, Eyebrow, Pill, PrimaryButton, StatTile } from '../components/ui';
 import { WeightUnit, formatWeight, toDisplay } from '../models';
-import { SessionReward, ordinal, relativeDay } from '../rewards';
+import { SessionReward, ordinal, relativeDay, trainerHeadline } from '../rewards';
 import { HapticKind, playHaptic } from '../haptics';
 import { Confetti, ConfettiSize } from './Confetti';
 
@@ -198,7 +198,7 @@ function describe(event: CelebrationEvent, accent: string, success: string): Con
     iconColor: reward.tier === 'standard' ? success : accent,
     eyebrow,
     title: trainer ? `${first} finished ${event.workoutName}.` : reward.headline,
-    subtitle: trainer ? reward.headline : event.workoutName,
+    subtitle: trainer ? trainerHeadline(reward, first) : event.workoutName,
     confetti: reward.tier === 'standard' ? 'standard' : 'big',
   };
 }
