@@ -42,6 +42,8 @@ import {
   readSnapshot,
   saveSnapshot,
 } from './persistence';
+import type { SyncStatus } from './sync/types';
+import { useCloudSync } from './sync/useCloudSync';
 import { Streak, weekStreak as computeWeekStreak } from './rewards';
 
 export type Appearance = 'light' | 'dark' | 'system';
@@ -164,6 +166,11 @@ interface StoreValue {
   weekSets: (clientId: string) => number;
   /** Consecutive weeks trained, and whether this week still needs a session to keep it. */
   weekStreak: (clientId: string) => Streak;
+
+  /** True while cloud sync is running for a signed-in account. */
+  cloudActive: boolean;
+  /** Whether this phone is online, and what is still waiting to upload. */
+  syncStatus: SyncStatus;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -208,6 +215,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Cloud sync's queue and bookkeeping. A ref rather than state: it is written
   // in the same save as the data, and changing it must not re-render anything.
   const syncRef = useRef<SyncSnapshot>(EMPTY_SYNC);
+  // The engine saves after the server confirms an upload, outside any render,
+  // so it needs today's values rather than the ones it was created with.
+  const persistRef = useRef<() => void>(() => {});
+  const cloud = useCloudSync({
+    syncRef,
+    setters: {
+      clients: setClients,
+      workouts: setWorkouts,
+      dayTypes: setDayTypes,
+      customMovements: setCustomMovements,
+    },
+    persist: () => persistRef.current(),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -243,7 +263,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Guarding on hydrated is not optional. Without it this fires on the
     // initial empty state and erases the saved store before the read above has
     // resolved — silently, and only on a cold start.
-    if (!hydrated || saveBlocked) return;
+    if (!hydrated) return;
+    // Cloud sync queues what changed before the save, so the data and the
+    // queue describing it land in the same write.
+    cloud.capture({ clients, workouts, dayTypes, customMovements });
+    if (saveBlocked) return;
     const snapshot: Snapshot = {
       version: SNAPSHOT_VERSION,
       clients,
@@ -256,6 +280,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       subscription,
       sync: syncRef.current,
     };
+    persistRef.current = () => saveSnapshot({ ...snapshot, sync: syncRef.current });
     saveSnapshot(snapshot);
   }, [
     hydrated,
@@ -268,6 +293,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     signedInClientId,
     appearance,
     subscription,
+    // Changes from other phones wait for this effect to fold them in.
+    cloud.inboxTick,
   ]);
 
   // Saves are coalesced over 300ms, and iOS pauses timers the moment the app
@@ -316,6 +343,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     return {
       hydrated,
+      cloudActive: cloud.active,
+      syncStatus: cloud.status,
       role,
       signedInClientId,
       appearance,
@@ -956,6 +985,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     subscription,
     purchasePending,
     mutate,
+    cloud.active,
+    cloud.status.online,
+    cloud.status.pending,
+    cloud.status.lastSyncedAt,
+    cloud.status.rejected,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
