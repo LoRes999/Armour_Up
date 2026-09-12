@@ -165,7 +165,9 @@ export default function ClientDetail() {
               >
                 <Row
                   title={workout.name}
-                  subtitle={`${relativeDay(workout.date)} · ${workout.exercises.length} exercises · ${totalSets(workout)} sets`}
+                  subtitle={`${relativeDay(workout.date)} · ${workout.exercises.length} ${
+                    workout.exercises.length === 1 ? 'exercise' : 'exercises'
+                  } · ${totalSets(workout)} ${totalSets(workout) === 1 ? 'set' : 'sets'}`}
                   value={new Date(workout.date).toLocaleTimeString(undefined, {
                     hour: 'numeric',
                     minute: '2-digit',
