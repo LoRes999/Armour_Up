@@ -20,7 +20,10 @@ export default function CreateAccount() {
   const p = usePalette();
   const auth = useAuth();
   const close = useClose();
-  const finishing = auth.status === 'signedIn' && !auth.claims.role;
+  // Decided once, when the screen opens. Recomputed every render, a normal
+  // sign-up flipped into "setup didn't finish" for the moment between the
+  // account existing and the coaching profile being ready.
+  const [finishing] = useState(() => auth.status === 'signedIn' && !auth.claims.role);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
