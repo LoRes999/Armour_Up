@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Constants from 'expo-constants';
 import { openHosted } from '../legal';
 import type { LegalDocId } from '../legalContent';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,11 @@ import { Avatar, Card, Eyebrow, SegmentedPicker, Title } from './ui';
 import { DayType, UNITS, WeightUnit, initialsOf, unitName } from '../models';
 import { DayTypeEditor } from './DayTypePicker';
 import { TRAINER_NAME } from '../sampleData';
+import { useAuth, useCoachName } from '../auth';
+import { NOTIFICATION_GROUPS, prefLabels } from '../notificationPrefs';
+import { currentPushToken } from '../notifications';
+import { removePushToken } from '../pushTokens';
+import type { SyncStatus } from '../sync/types';
 import { confirm, notify } from '../confirm';
 import { exportData } from '../exportData';
 
@@ -40,20 +45,55 @@ export default function SettingsScreen() {
   const router = useRouter();
   const store = useStore();
   const client = store.currentClient();
+  const auth = useAuth();
+  const coachName = useCoachName();
+  // With accounts: the email, notification switches, password and sync rows.
+  const cloud = auth.status !== 'off';
   // 'new' opens a blank editor; a DayType opens it loaded for editing.
   const [editing, setEditing] = useState<DayType | 'new' | null>(null);
 
-  const confirmSignOut = () =>
+  const confirmSignOut = () => {
+    const waiting = cloud ? store.syncStatus.pending : 0;
     confirm({
       title: 'Sign out?',
-      message: 'You can sign back in as either side.',
-      confirmLabel: 'Sign out',
+      message:
+        waiting > 0
+          ? `${waiting === 1 ? "1 change hasn't" : `${waiting} changes haven't`} reached the cloud yet. If you sign out now they'll be lost.`
+          : cloud
+            ? 'You can sign back in any time.'
+            : 'You can sign back in as either side.',
+      confirmLabel: waiting > 0 ? 'Sign out anyway' : 'Sign out',
+      cancelLabel: waiting > 0 ? 'Stay signed in' : 'Cancel',
       destructive: true,
-      onConfirm: () => {
-        store.signOut();
-        router.replace('/');
-      },
+      onConfirm: () => void signOut(),
     });
+  };
+
+  const signOut = async () => {
+    if (cloud && auth.uid) {
+      // The next person on this phone shouldn't get this account's reminders.
+      const token = await currentPushToken();
+      if (token) await removePushToken(auth.uid, token);
+      await auth.signOut().catch(() => undefined);
+    }
+    store.signOut();
+    router.replace('/');
+  };
+
+  const changePassword = () => {
+    const email = auth.email;
+    if (!email) return;
+    auth
+      .resetPassword(email)
+      .then(() =>
+        notify({ title: 'Check your email', message: `We've sent a link to change your password to ${email}.` })
+      )
+      .catch((failure: Error) => notify({ title: 'No email was sent', message: failure.message }));
+  };
+
+  const showSync = () => notify({ title: 'Sync', message: syncDetail(store.syncStatus) });
+
+  const labels = prefLabels(store.role === 'trainer' ? 'trainer' : 'client', coachName.split(' ')[0] ?? '');
 
   /** A trainer exports the roster; a client exports only themselves. */
   const runExport = () => {
@@ -77,11 +117,11 @@ export default function SettingsScreen() {
 
   const showVisibility = () =>
     notify({
-      title: store.role === 'trainer' ? 'What clients can see' : `What ${TRAINER_NAME} can see`,
+      title: store.role === 'trainer' ? 'What clients can see' : `What ${coachName} can see`,
       message:
         store.role === 'trainer'
           ? 'Clients see the sessions you programme for them, every set you log, your coach notes, and their own history and records. They cannot see other clients, your roster, or anything about your subscription.'
-          : `${TRAINER_NAME} sees the sessions they programme for you, the sets logged in them, and any session you repeat on your own. Your unit preference and appearance settings are yours alone.`,
+          : `${coachName} sees the sessions they programme for you, the sets logged in them, and any session you repeat on your own. Your unit preference and appearance settings are yours alone.`,
     });
 
   return (
@@ -94,19 +134,70 @@ export default function SettingsScreen() {
         radius={17}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 13, padding: 13, minHeight: 56 }}
       >
-        <Avatar initials={client ? initialsOf(client.name) : '—'} size={46} />
+        <Avatar
+          initials={
+            client
+              ? initialsOf(client.name)
+              : store.role === 'trainer' && coachName
+                ? initialsOf(coachName)
+                : '—'
+          }
+          size={46}
+        />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: p.text }}>
-            {store.role === 'trainer' ? TRAINER_NAME : (client?.name ?? 'Client')}
+            {store.role === 'trainer' ? coachName : (client?.name ?? 'Client')}
           </Text>
           <Text style={{ fontSize: 12, color: p.dim }}>
-            {store.role === 'trainer'
-              ? `${store.clients.length} clients`
-              : `Coached by ${TRAINER_NAME}`}
+            {cloud && auth.email
+              ? auth.email
+              : store.role === 'trainer'
+                ? `${store.clients.length} clients`
+                : `Coached by ${coachName}`}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={p.dim} />
       </Card>
+
+      {cloud && store.role ? (
+        <Section title="NOTIFICATIONS">
+          <Card radius={15}>
+            {NOTIFICATION_GROUPS.map((group, index) => (
+              <View key={group}>
+                {index > 0 ? <Divider /> : null}
+                <View
+                  style={{
+                    minHeight: 54,
+                    paddingHorizontal: 13,
+                    paddingVertical: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>{labels[group].title}</Text>
+                    <Text style={{ fontSize: 11, color: p.dim, marginTop: 1 }}>{labels[group].detail}</Text>
+                  </View>
+                  <Switch
+                    value={auth.profile.prefs[group]}
+                    onValueChange={(on) =>
+                      void auth
+                        .setNotificationPref(group, on)
+                        .catch((failure: Error) => notify({ title: 'Not changed', message: failure.message }))
+                    }
+                    trackColor={{ false: p.surfaceAlt, true: p.success }}
+                    accessibilityLabel={labels[group].title}
+                  />
+                </View>
+              </View>
+            ))}
+          </Card>
+          <Text style={{ fontSize: 11, color: p.dim }}>
+            Never between 9 PM and 7 AM. At most one motivation or recap message a day.
+          </Text>
+        </Section>
+      ) : null}
 
       {/* Units are a per-client preference, and a trainer has no client record
           of their own — the control was previously rendered for them too, pinned
@@ -295,6 +386,30 @@ export default function SettingsScreen() {
 
       <Section title="ACCOUNT">
         <Card radius={15}>
+          {cloud ? (
+            <>
+              <NavRow label="Change password" onPress={changePassword} />
+              <Divider />
+              <Pressable onPress={showSync} accessibilityRole="button">
+                <View
+                  style={{
+                    minHeight: 50,
+                    paddingHorizontal: 13,
+                    paddingVertical: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>Sync</Text>
+                    <Text style={{ fontSize: 11, color: p.dim, marginTop: 1 }}>{syncLine(store.syncStatus)}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={p.dim} />
+                </View>
+              </Pressable>
+              <Divider />
+            </>
+          ) : null}
           <Pressable onPress={confirmSignOut}>
             <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>Sign out</Text>
@@ -344,6 +459,38 @@ export default function SettingsScreen() {
       />
     </SafeAreaView>
   );
+}
+
+const changes = (count: number) => (count === 1 ? '1 change' : `${count} changes`);
+
+function ago(timestamp: number): string {
+  const minutes = Math.round((Date.now() - timestamp) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  return new Date(timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+/** One line for the Sync row: "All changes saved · just now". */
+function syncLine(status: SyncStatus): string {
+  if (!status.online) return status.pending > 0 ? `Offline · ${changes(status.pending)} waiting` : 'Offline';
+  if (status.pending > 0) return `Saving ${changes(status.pending)}…`;
+  return status.lastSyncedAt ? `All changes saved · ${ago(status.lastSyncedAt)}` : 'All changes saved';
+}
+
+function syncDetail(status: SyncStatus): string {
+  const parts = [
+    status.online
+      ? status.pending > 0
+        ? `${changes(status.pending)} uploading now.`
+        : 'Everything on this phone is saved to your account.'
+      : `You're offline. ${
+          status.pending > 0 ? `${changes(status.pending)} will upload` : 'Changes you make will upload'
+        } when the connection returns, even if you close the app.`,
+  ];
+  if (status.rejected > 0) {
+    parts.push(`${changes(status.rejected)} couldn't be saved because your account isn't allowed to make them.`);
+  }
+  return parts.join('\n\n');
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

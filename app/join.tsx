@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View, Keyboard } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,31 +17,80 @@ import {
 } from '../src/models';
 import { TRAINER_NAME } from '../src/sampleData';
 import { useClose } from '../src/useClose';
+import { type InvitePreview, useAuth } from '../src/auth';
+import { MIN_PASSWORD_LENGTH } from '../src/authErrors';
+import { AuthField, FormError } from '../src/components/AuthField';
 
 /**
- * How a client gets into the app. The code is their identity — matching it is
- * what decides whose programme they see, which is the thing that used to be
- * hardcoded to the first seeded client.
+ * How a client gets into the app. The code decides whose programme they see.
+ *
+ * Without accounts, the code is matched against the roster on this phone and
+ * is the client's whole identity. With accounts, the server says whose
+ * invitation it is, and a second step creates the account that keeps their
+ * training safe on any phone (the approved "Last step" design).
  */
 export default function Join() {
   const p = usePalette();
   const router = useRouter();
   const close = useClose();
   const store = useStore();
+  const auth = useAuth();
+  const cloud = auth.status !== 'off';
+
   const [code, setCode] = useState('');
   // Null until they actually touch the picker. Derived rather than synced, so
   // it can show the unit the trainer chose for them without an effect — and so
   // accepting an invite no longer silently overwrites that choice with kg.
   const [unitChoice, setUnitChoice] = useState<WeightUnit | null>(null);
 
+  const [preview, setPreview] = useState<{ code: string; invite: InvitePreview } | null>(null);
+  const [lookup, setLookup] = useState<{ code: string; error: string } | null>(null);
+  const [step, setStep] = useState<'invitation' | 'account'>('invitation');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const clean = normaliseCode(code);
-  const match = store.clientByCode(clean);
-  const unit = unitChoice ?? match?.unit ?? DEFAULT_UNIT;
+  const localMatch = cloud ? undefined : store.clientByCode(clean);
+  const remote = cloud && preview?.code === clean ? preview.invite : null;
+
+  // With accounts, a whole code is looked up on the server.
+  useEffect(() => {
+    if (!cloud || clean.length !== CODE_LENGTH) return;
+    let current = true;
+    auth
+      .previewInvite(clean)
+      .then((invite) => {
+        if (!current) return;
+        setPreview({ code: clean, invite });
+        setLookup(null);
+        setEmail((typed) => typed || invite.email);
+        Keyboard.dismiss();
+      })
+      .catch((failure: Error) => {
+        if (current) setLookup({ code: clean, error: failure.message });
+      });
+    return () => {
+      current = false;
+    };
+    // The lookup belongs to the code; the auth object is rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloud, clean]);
+
+  const invitation = cloud
+    ? remote && { coachName: remote.trainerName, clientName: remote.clientName, unit: remote.unit }
+    : localMatch && { coachName: TRAINER_NAME, clientName: localMatch.name, unit: localMatch.unit };
+  const unit = unitChoice ?? invitation?.unit ?? DEFAULT_UNIT;
+  const coachFirst = invitation ? invitation.coachName.split(' ')[0] : '';
+  const clientFirst = invitation ? invitation.clientName.split(' ')[0] : '';
+
   // Only complain once they have typed a whole code — nagging halfway through
   // someone's first six characters is just noise. Counted on what they typed,
   // not on what survived normalising: an O where a Q belongs is stripped, which
   // used to leave a full-looking field with no match and no error at all.
-  const wrong = code.trim().length >= CODE_LENGTH && !match;
+  const lookupError = cloud && lookup?.code === clean ? lookup.error : null;
+  const wrong = cloud ? lookupError !== null : code.trim().length >= CODE_LENGTH && !localMatch;
 
   /**
    * A fresh install has no clients, so there is no code to demo with. Seeding
@@ -58,27 +107,110 @@ export default function Join() {
     Keyboard.dismiss();
   };
 
-  const accept = () => {
-    if (!match) return;
-    if (unitChoice && unitChoice !== match.unit) store.setClientUnit(match.id, unitChoice);
-    store.redeemInviteCode(clean);
-    // Back to the root gate, which now redirects into the client app.
-    close();
+  const run = async (work: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await work();
+      // Back to the root gate, which opens the client app once their
+      // programme is on the phone.
+      close();
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: '',
-          headerLeft: () => (
+  const accept = () => {
+    if (!invitation) return;
+    if (!cloud) {
+      if (localMatch && unitChoice && unitChoice !== localMatch.unit) store.setClientUnit(localMatch.id, unitChoice);
+      store.redeemInviteCode(clean);
+      close();
+      return;
+    }
+    // An account whose earlier setup stopped short only needs linking.
+    if (auth.status === 'signedIn') {
+      void run(() => auth.redeemInvite(clean, unitChoice ?? undefined));
+      return;
+    }
+    setError(null);
+    setStep('account');
+  };
+
+  const canCreate = email.includes('@') && password.length >= MIN_PASSWORD_LENGTH && !busy;
+  const createAndJoin = () => {
+    if (!canCreate) return;
+    void run(() => auth.joinWithCode({ code: clean, email, password, unit: unitChoice ?? undefined }));
+  };
+
+  const header = (
+    <Stack.Screen
+      options={{
+        headerShown: true,
+        title: '',
+        headerLeft: () =>
+          step === 'account' ? (
+            <Pressable onPress={() => setStep('invitation')} hitSlop={8} accessibilityRole="button">
+              <Text style={{ color: p.accent, fontSize: 16 }}>Back</Text>
+            </Pressable>
+          ) : (
             <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
               <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
             </Pressable>
           ),
-        }}
-      />
+      }}
+    />
+  );
+
+  if (step === 'account' && invitation) {
+    return (
+      <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
+        {header}
+        <ScrollView
+          {...keyboardAware}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24, gap: 16 }}
+        >
+          <Eyebrow color={p.accent}>LAST STEP</Eyebrow>
+          <Title size={28}>{`Keep your training safe, ${clientFirst}.`}</Title>
+          <Text style={{ fontSize: 14, color: p.dim, lineHeight: 20, marginTop: -6 }}>
+            {`Your sessions and records stay with you on any phone. Use the email ${coachFirst} invited, or any email you like.`}
+          </Text>
+          <AuthField label="Email" value={email} onChangeText={setEmail} kind="email" />
+          <AuthField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            kind="newPassword"
+            placeholder="Choose a password"
+            hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+            onSubmitEditing={createAndJoin}
+          />
+          <FormError message={error} />
+          <View style={{ flex: 1 }} />
+          <PrimaryButton
+            title={busy ? 'Joining…' : 'Create account and join'}
+            onPress={createAndJoin}
+            enabled={canCreate}
+          />
+          <Pressable
+            onPress={() => router.push('/sign-in')}
+            accessibilityRole="button"
+            style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>
+              Already joined on another phone? Sign in
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
+      {header}
 
       <ScrollView
         {...keyboardAware}
@@ -86,8 +218,9 @@ export default function Join() {
       >
         <Title size={30}>Enter your invite code.</Title>
         <Text style={{ fontSize: 14, color: p.dim, lineHeight: 20, marginTop: -8 }}>
-          Your coach sends you a six-character code. It never expires, so keep it if you change
-          phones.
+          {cloud
+            ? 'Your coach sends you a six-character code.'
+            : 'Your coach sends you a six-character code. It never expires, so keep it if you change phones.'}
         </Text>
 
         <View style={{ gap: 7 }}>
@@ -105,7 +238,7 @@ export default function Join() {
               borderRadius: metrics.controlRadius,
               backgroundColor: p.surfaceAlt,
               borderWidth: 1.5,
-              borderColor: wrong ? p.danger : match ? p.accent : 'transparent',
+              borderColor: wrong ? p.danger : invitation ? p.accent : 'transparent',
               color: p.text,
               fontSize: 28,
               fontWeight: '800',
@@ -115,14 +248,15 @@ export default function Join() {
           />
           {wrong ? (
             <Text style={{ fontSize: 12, color: p.danger, textAlign: 'center' }}>
-              We don't recognise that code. Check it with your coach.
+              {lookupError ?? "We don't recognise that code. Check it with your coach."}
             </Text>
           ) : null}
         </View>
 
         {/* Without this, signing out of the trainer app strands a reviewer: the
-            client's only door is a code they have no way of knowing. */}
-        {__DEV__ && !match ? (
+            client's only door is a code they have no way of knowing. Sample
+            data lives on the phone only, so with accounts there is none. */}
+        {__DEV__ && !cloud && !invitation ? (
           <Pressable
             onPress={fillDemoCode}
             accessibilityRole="button"
@@ -134,11 +268,11 @@ export default function Join() {
           </Pressable>
         ) : null}
 
-        {match ? (
+        {invitation ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
               <Avatar
-                initials={initialsOf(TRAINER_NAME)}
+                initials={initialsOf(invitation.coachName)}
                 size={52}
                 tint={p.onAccent}
                 background={p.accent}
@@ -148,15 +282,13 @@ export default function Join() {
                 <Text
                   style={{ fontSize: 19, fontWeight: '800', letterSpacing: -0.5, color: p.text }}
                 >
-                  {TRAINER_NAME}
+                  {invitation.coachName}
                 </Text>
                 <Text style={{ fontSize: 12, color: p.dim }}>Strength coach</Text>
               </View>
             </View>
 
-            <Title size={26}>{`${TRAINER_NAME.split(' ')[0]} wants to coach you, ${
-              match.name.split(' ')[0]
-            }.`}</Title>
+            <Title size={26}>{`${coachFirst} wants to coach you, ${clientFirst}.`}</Title>
 
             <View style={{ gap: 11 }}>
               {[
@@ -168,7 +300,7 @@ export default function Join() {
                 {
                   icon: 'trending-up-outline' as const,
                   title: 'Every number kept',
-                  detail: `${TRAINER_NAME.split(' ')[0]} logs your sets as you lift. You keep the full history.`,
+                  detail: `${coachFirst} logs your sets as you lift. You keep the full history.`,
                 },
                 {
                   icon: 'shield-checkmark-outline' as const,
@@ -215,19 +347,33 @@ export default function Join() {
               </Text>
             </Card>
 
-            <View style={{ gap: 12, marginTop: 4 }}>
-              <PrimaryButton title="Accept invitation" onPress={accept} />
-              <Pressable
-                onPress={close}
-                style={{
-                  minHeight: metrics.hitTarget,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>Not now</Text>
-              </Pressable>
-            </View>
+            {remote?.alreadyJoined ? (
+              <View style={{ gap: 12, marginTop: 4 }}>
+                <Text style={{ fontSize: 13, color: p.dim, lineHeight: 19, textAlign: 'center' }}>
+                  This invitation has already been used. If it's yours, sign in instead.
+                </Text>
+                <PrimaryButton title="Sign in" onPress={() => router.push('/sign-in')} />
+              </View>
+            ) : (
+              <View style={{ gap: 12, marginTop: 4 }}>
+                <FormError message={error} />
+                <PrimaryButton
+                  title={busy ? 'Joining…' : 'Accept invitation'}
+                  onPress={accept}
+                  enabled={!busy}
+                />
+                <Pressable
+                  onPress={close}
+                  style={{
+                    minHeight: metrics.hitTarget,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>Not now</Text>
+                </Pressable>
+              </View>
+            )}
           </>
         ) : null}
       </ScrollView>

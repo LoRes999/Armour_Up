@@ -30,7 +30,8 @@ import {
   totalSets,
   workoutProgress,
 } from '../../src/models';
-import { TRAINER_NAME } from '../../src/sampleData';
+import { useCoachName } from '../../src/auth';
+import { SyncPill } from '../../src/components/SyncPill';
 import { useCelebration } from '../../src/celebration/CelebrationProvider';
 import { relativeDay } from '../../src/rewards';
 
@@ -54,7 +55,8 @@ export default function ClientToday() {
   const solo = client ? store.activeSoloFor(client.id) : undefined;
   const lastSession = client ? store.historyFor(client.id)[0] : undefined;
   const unit = client?.unit ?? DEFAULT_UNIT;
-  const coachFirstName = TRAINER_NAME.split(' ')[0];
+  const coachName = useCoachName();
+  const coachFirstName = coachName.split(' ')[0];
 
   const streak = client ? store.weekStreak(client.id) : { weeks: 0, atRisk: false };
   const fresh = client ? store.unseenFromCoach(client.id) : [];
@@ -105,6 +107,7 @@ export default function ClientToday() {
           </View>
           {client ? <Avatar initials={initialsOf(client.name)} /> : null}
         </View>
+        <SyncPill />
 
         {/* Weekly, so rest days never break it. When this week still needs a
             session, it says so — the thing to lose is what brings people back. */}
@@ -278,7 +281,7 @@ export default function ClientToday() {
                 }}
               >
                 <Avatar
-                  initials={initialsOf(TRAINER_NAME)}
+                  initials={initialsOf(coachName)}
                   size={24}
                   tint={p.onAccent}
                   background={p.accent}

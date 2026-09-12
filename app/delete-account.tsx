@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
 import { metrics, usePalette } from '../src/theme';
 import { Card, Eyebrow, PrimaryButton, Title, keyboardAware } from '../src/components/ui';
-import { TRAINER_NAME } from '../src/sampleData';
-import { confirm } from '../src/confirm';
+import { useAuth, useCoachName } from '../src/auth';
+import { confirm, notify } from '../src/confirm';
 import { clearPhotos } from '../src/photoStorage';
 import { useClose } from '../src/useClose';
 
@@ -23,7 +23,10 @@ export default function DeleteAccount() {
   const router = useRouter();
   const close = useClose();
   const store = useStore();
+  const auth = useAuth();
+  const coachName = useCoachName();
   const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const armed = typed.trim().toUpperCase() === PHRASE;
 
@@ -41,7 +44,7 @@ export default function DeleteAccount() {
     : [
         'Your training history and PRs',
         'Every logged set and session note',
-        `Your link to ${TRAINER_NAME}`,
+        `Your link to ${coachName}`,
         'Your account and sign-in',
       ];
 
@@ -51,12 +54,29 @@ export default function DeleteAccount() {
       message: 'This removes your training history permanently.',
       confirmLabel: 'Delete',
       destructive: true,
-      onConfirm: () => {
-        store.deleteAccount();
-        clearPhotos();
-        router.replace('/');
-      },
+      onConfirm: () => void remove(),
     });
+
+  /**
+   * With accounts, the server deletes first: the data lives there, and a
+   * phone that only cleared itself would leave the account behind. If that
+   * fails nothing local is touched, so they can try again.
+   */
+  const remove = async () => {
+    if (auth.status !== 'off') {
+      setBusy(true);
+      try {
+        await auth.deleteAccount();
+      } catch (failure) {
+        setBusy(false);
+        notify({ title: 'Your account was not deleted', message: (failure as Error).message });
+        return;
+      }
+    }
+    store.deleteAccount();
+    clearPhotos();
+    router.replace('/');
+  };
 
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: p.background }}>
@@ -80,7 +100,7 @@ export default function DeleteAccount() {
         <Text style={{ fontSize: 14, color: p.dim, lineHeight: 21, marginTop: -8 }}>
           {isTrainer
             ? `You cannot undo this. Every client loses access to their programme and history. Cancel your subscription separately in the App Store.`
-            : `You cannot undo this. ${TRAINER_NAME} will be notified that you have left.`}
+            : `You cannot undo this. ${coachName} will be notified that you have left.`}
         </Text>
 
         <Card radius={17} style={{ padding: 15, gap: 10 }}>
@@ -133,7 +153,7 @@ export default function DeleteAccount() {
             title="Delete my account"
             tint={p.danger}
             foreground="#FFFFFF"
-            enabled={armed}
+            enabled={armed && !busy}
             onPress={confirmDelete}
           />
           <Pressable

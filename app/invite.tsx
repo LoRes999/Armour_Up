@@ -15,7 +15,8 @@ import {
   formatInviteCode,
   unitName,
 } from '../src/models';
-import { TRAINER_NAME } from '../src/sampleData';
+import { useAuth, useCoachName } from '../src/auth';
+import { FormError } from '../src/components/AuthField';
 import { useConfirmDiscard } from '../src/useConfirmDiscard';
 import { useClose } from '../src/useClose';
 
@@ -30,8 +31,37 @@ export default function InviteClient() {
   // Once they exist, this screen's job changes from collecting details to
   // handing over the code.
   const [invited, setInvited] = useState<Client | null>(null);
+  const auth = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const canSend = name.trim().length > 0 && email.includes('@');
+  const canSend = name.trim().length > 0 && email.includes('@') && !busy;
+
+  /**
+   * With accounts, the code comes from the server: it has to be unique across
+   * every coach, which no phone can check on its own. Without accounts it is
+   * made here, as it always was.
+   */
+  const send = async () => {
+    if (!canSend) return;
+    if (!store.cloudActive) {
+      setInvited(store.invite(name.trim(), email.trim(), unit));
+      return;
+    }
+    if (!store.syncStatus.online) {
+      setError("You're offline. Invitations need a connection so the code is unique.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      setInvited(await auth.createInvite(name.trim(), email.trim(), unit));
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Once the invitation exists there is nothing left to lose by closing.
   useConfirmDiscard(
@@ -99,16 +129,18 @@ export default function InviteClient() {
               </Text>
             </View>
             <Text style={{ fontSize: 12, color: p.dim, lineHeight: 18 }}>
-              Send it however you like. They install the app, type the code, and land on your
-              programme — free, and with no account to create.
+              {store.cloudActive
+                ? 'Send it however you like. They install the app, type the code, set a password, and land on your programme — free.'
+                : 'Send it however you like. They install the app, type the code, and land on your programme — free, and with no account to create.'}
             </Text>
           </View>
 
+          <FormError message={error} />
           <PrimaryButton
-            title="Create invitation"
+            title={busy ? 'Creating…' : 'Create invitation'}
             icon="paper-plane-outline"
             enabled={canSend}
-            onPress={() => setInvited(store.invite(name.trim(), email.trim(), unit))}
+            onPress={() => void send()}
           />
         </ScrollView>
       )}
@@ -120,8 +152,9 @@ export default function InviteClient() {
 function SentPanel({ client, onDone }: { client: Client; onDone: () => void }) {
   const p = usePalette();
   const [copied, setCopied] = useState(false);
+  const coachName = useCoachName();
   const firstName = client.name.split(' ')[0];
-  const message = `${firstName} — here is your invite code for training with ${TRAINER_NAME}: ${client.inviteCode}`;
+  const message = `${firstName} — here is your invite code for training with ${coachName}: ${client.inviteCode}`;
 
   // React Native's own Clipboard is deprecated and slated for removal.
   const copy = () => {

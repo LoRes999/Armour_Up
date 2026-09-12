@@ -23,7 +23,8 @@ import {
   loggedSets,
   totalSets,
 } from '../../../src/models';
-import { confirm } from '../../../src/confirm';
+import { confirm, notify } from '../../../src/confirm';
+import { useAuth } from '../../../src/auth';
 
 type Tab = 'program' | 'history' | 'prs';
 
@@ -31,6 +32,7 @@ export default function ClientDetail() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
+  const auth = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>('program');
 
@@ -114,7 +116,16 @@ export default function ClientDetail() {
                 message: `${client.name.split(' ')[0]}'s current code stops working straight away.`,
                 confirmLabel: 'New code',
                 destructive: true,
-                onConfirm: () => store.regenerateInviteCode(client.id),
+                // With accounts the server issues it, so no two coaches share a code.
+                onConfirm: () => {
+                  if (!store.cloudActive) {
+                    store.regenerateInviteCode(client.id);
+                    return;
+                  }
+                  auth.regenerateInviteCode(client.id).catch((failure: Error) =>
+                    notify({ title: 'No new code yet', message: failure.message })
+                  );
+                },
               })
             }
             hitSlop={8}

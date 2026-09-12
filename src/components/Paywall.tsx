@@ -10,6 +10,7 @@ import { PLANS } from '../purchases';
 import { PlanId } from '../models';
 import { notify } from '../confirm';
 import { openHosted } from '../legal';
+import { useAuth } from '../auth';
 import type { LegalDocId } from '../legalContent';
 
 /**
@@ -27,6 +28,10 @@ export default function Paywall() {
   const router = useRouter();
   const store = useStore();
   const [plan, setPlan] = useState<PlanId>('annual');
+  // With accounts, a coach reaches this screen already signed in: the invite
+  // code button and "Sign back in as coach" are for the signed-out paywall.
+  const auth = useAuth();
+  const signedInCoach = auth.status === 'signedIn';
 
   const lapsed = store.subscription?.status === 'expired';
   // Owns it, but is not signed in — signOut clears the role and keeps the sub.
@@ -233,6 +238,7 @@ export default function Paywall() {
               committal-looking control on the screen completed a purchase. It is
               now the client's way in — the other thing this screen has to offer,
               and previously a small link at the very bottom of the pitch. */}
+          {signedInCoach ? null : (
           <Pressable
             onPress={() => router.push('/join')}
             accessibilityRole="button"
@@ -254,6 +260,7 @@ export default function Paywall() {
               </Text>
             </Card>
           </Pressable>
+          )}
 
           <Pressable
             onPress={pending ? undefined : restore}
@@ -267,7 +274,15 @@ export default function Paywall() {
             button above now does exactly that, and always renders — which is
             also what un-strands a lapsed trainer who signs out, since the link
             used to be replaced by Sign out and /join became unreachable. */}
-        {lapsed ? (
+        {signedInCoach ? (
+          <Pressable
+            onPress={() => void auth.signOut()}
+            accessibilityRole="button"
+            style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Sign out</Text>
+          </Pressable>
+        ) : lapsed ? (
           <Pressable
             onPress={() => store.signOut()}
             accessibilityRole="button"

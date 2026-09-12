@@ -13,6 +13,7 @@ import {
   keyboardAware,
 } from '../../../src/components/ui';
 import { Client, initialsOf } from '../../../src/models';
+import { SyncPill } from '../../../src/components/SyncPill';
 
 type Filter = 'today' | 'all' | 'flagged';
 
@@ -41,6 +42,7 @@ export default function Roster() {
       style={{ backgroundColor: p.background }}
       contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 32, gap: 12 }}
     >
+      <SyncPill />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View
           style={{

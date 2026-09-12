@@ -16,7 +16,7 @@ import {
   topLoggedWeight,
   topTargetWeight,
 } from '../models';
-import { TRAINER_NAME } from '../sampleData';
+import { useCoachName } from '../auth';
 
 /**
  * One finished session, in full. Both sides read the same record — the client
@@ -37,6 +37,7 @@ export default function SessionDetail({
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
+  const coachName = useCoachName();
 
   const workout = store.workout(workoutId);
   const client = workout ? store.client(workout.clientId) : undefined;
@@ -172,7 +173,7 @@ export default function SessionDetail({
           }}
         >
           <Avatar
-            initials={initialsOf(TRAINER_NAME)}
+            initials={initialsOf(coachName)}
             size={24}
             tint={p.onAccent}
             background={p.accent}

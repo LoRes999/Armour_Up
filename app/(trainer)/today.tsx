@@ -7,6 +7,7 @@ import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { Card, EmptyState, Numeric, Title } from '../../src/components/ui';
 import { totalSets } from '../../src/models';
+import { SyncPill } from '../../src/components/SyncPill';
 
 export default function TrainerToday() {
   const p = usePalette();
@@ -31,6 +32,7 @@ export default function TrainerToday() {
         contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 32, gap: 12 }}
       >
         <Title>Today</Title>
+        <SyncPill />
         {sessions.length === 0 ? (
         <EmptyState
           icon="calendar-outline"
