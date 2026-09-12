@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StoreProvider, useStore } from '../src/store';
+import { AuthProvider } from '../src/auth';
+import { CloudBridge } from '../src/sync/CloudBridge';
 import { useIsDark, usePalette } from '../src/theme';
 import { CelebrationProvider } from '../src/celebration/CelebrationProvider';
 
@@ -18,9 +20,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StoreProvider>
-          <Root />
-        </StoreProvider>
+        {/* Accounts, then the store's link to the cloud. Both are inert until
+            EXPO_PUBLIC_CLOUD is switched on. */}
+        <AuthProvider>
+          <CloudBridge>
+            <StoreProvider>
+              <Root />
+            </StoreProvider>
+          </CloudBridge>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
