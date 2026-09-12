@@ -44,6 +44,7 @@ import {
 } from './persistence';
 import type { SyncStatus } from './sync/types';
 import { useCloudSync } from './sync/useCloudSync';
+import { useCloud } from './sync/context';
 import { Streak, weekStreak as computeWeekStreak } from './rewards';
 
 export type Appearance = 'light' | 'dark' | 'system';
@@ -259,6 +260,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // With accounts, who is signed in — and as which side — comes from the
+  // account's sign-in token, not from a button on this phone.
+  const cloudSession = useCloud();
+  const cloudScopeKey = cloudSession ? JSON.stringify(cloudSession.scope) : null;
+  useEffect(() => {
+    if (!hydrated || !cloudSession) return;
+    const scope = cloudSession.scope;
+    setRole(scope ? scope.role : null);
+    setSignedInClientId(scope?.role === 'client' ? scope.clientId : null);
+    // Keyed on the scope's content; the session object is rebuilt each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, cloudScopeKey]);
+
   useEffect(() => {
     // Guarding on hydrated is not optional. Without it this fires on the
     // initial empty state and erases the saved store before the read above has
@@ -360,7 +374,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       canUseTrainerApp: () => role === 'trainer' && subscription?.status === 'active',
-      canUseClientApp: () => role === 'client' && signedInClientId !== null,
+      // The client's own record has to be here too. On a new phone it arrives
+      // from the cloud a moment after sign-in, and every client screen reads it.
+      canUseClientApp: () =>
+        role === 'client' &&
+        signedInClientId !== null &&
+        clients.some((c) => c.id === signedInClientId),
 
       subscription,
       purchasePending,

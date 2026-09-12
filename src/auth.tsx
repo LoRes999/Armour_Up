@@ -7,11 +7,14 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
+import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { friendlyAuthError } from './authErrors';
 import { cloudConfig } from './config';
 import { firebase } from './firebase';
 import type { Client, WeightUnit } from './models';
+import { DEFAULT_PREFS, type NotificationGroup, type NotificationPrefs, withDefaults } from './notificationPrefs';
+import { TRAINER_NAME } from './sampleData';
 import type { SyncScope } from './sync/types';
 
 /**
@@ -19,8 +22,8 @@ import type { SyncScope } from './sync/types';
  * client, and which coach) is a claim in the sign-in token that only the Cloud
  * Functions can set, so it can be trusted by the security rules and by this app.
  *
- * With cloud switched off (the default until the account screens exist) the
- * status is 'off' and Firebase is never started.
+ * With cloud switched off (the default until it is configured) the status is
+ * 'off' and Firebase is never started.
  */
 
 export type AuthStatus = 'off' | 'loading' | 'signedOut' | 'signedIn';
@@ -39,6 +42,14 @@ export interface InvitePreview {
   alreadyJoined: boolean;
 }
 
+export interface AccountProfile {
+  /** The person's own name as their account has it. */
+  displayName: string | null;
+  /** Their coach's name — their own, for a coach. */
+  coachName: string | null;
+  prefs: NotificationPrefs;
+}
+
 export interface AuthValue {
   status: AuthStatus;
   uid: string | null;
@@ -46,6 +57,7 @@ export interface AuthValue {
   claims: AccountClaims;
   /** What cloud sync should sync. Null until the account has a role. */
   scope: SyncScope | null;
+  profile: AccountProfile;
 
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -58,12 +70,17 @@ export interface AuthValue {
   previewInvite: (code: string) => Promise<InvitePreview>;
   /** New client: creates the account and links it to the invitation. */
   joinWithCode: (input: { code: string; email: string; password: string; unit?: WeightUnit }) => Promise<void>;
+  /** Links an existing, role-less account to an invitation. */
+  redeemInvite: (code: string, unit?: WeightUnit) => Promise<void>;
   createInvite: (name: string, email: string, unit: WeightUnit) => Promise<Client>;
   regenerateInviteCode: (clientId: string) => Promise<string>;
+  setNotificationPref: (group: NotificationGroup, on: boolean) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+
+const EMPTY_PROFILE: AccountProfile = { displayName: null, coachName: null, prefs: DEFAULT_PREFS };
 
 function localTimeZone(): string {
   try {
@@ -106,6 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     claims: {},
   }));
+  const [account, setAccount] = useState<{ displayName: string | null; prefs: NotificationPrefs }>({
+    displayName: null,
+    prefs: DEFAULT_PREFS,
+  });
+  const [coachName, setCoachName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!cloudConfig.enabled) return;
@@ -124,19 +146,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const uid = state.user?.uid ?? null;
+  const role = state.claims.role;
+  const trainerId = role === 'trainer' ? uid : (state.claims.trainerId ?? null);
+
+  // The account's own profile: name and notification switches.
+  useEffect(() => {
+    if (!uid || !role) {
+      setAccount({ displayName: null, prefs: DEFAULT_PREFS });
+      return;
+    }
+    return onSnapshot(
+      doc(firebase().db, 'users', uid),
+      (snapshot) =>
+        setAccount({
+          displayName: (snapshot.get('displayName') as string | undefined) ?? null,
+          prefs: withDefaults(snapshot.get('notificationPrefs')),
+        }),
+      () => undefined
+    );
+  }, [uid, role]);
+
+  // The coach's name, as every client screen says it.
+  useEffect(() => {
+    if (!trainerId) {
+      setCoachName(null);
+      return;
+    }
+    return onSnapshot(
+      doc(firebase().db, 'trainers', trainerId),
+      (snapshot) => setCoachName((snapshot.get('name') as string | undefined) ?? null),
+      () => undefined
+    );
+  }, [trainerId]);
+
   const finishTrainerSetup = useCallback(async (name: string) => {
     await call('createTrainerProfile', { name, timezone: localTimeZone() });
     await refreshClaims();
   }, []);
 
   const value = useMemo<AuthValue>(() => {
-    const uid = state.user?.uid ?? null;
     return {
       status: state.status,
       uid,
       email: state.user?.email ?? null,
       claims: state.claims,
       scope: scopeFor(uid, state.claims),
+      profile: { displayName: account.displayName, coachName, prefs: account.prefs },
 
       signIn: (email, password) =>
         friendly(async () => {
@@ -162,11 +218,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await refreshClaims();
       },
 
+      redeemInvite: async (code, unit) => {
+        await call('redeemInvite', { code, unit, timezone: localTimeZone() });
+        await refreshClaims();
+      },
+
       createInvite: async (name, email, unit) =>
         (await call<{ client: Client }>('createInvite', { name, email, unit })).client,
 
       regenerateInviteCode: async (clientId) =>
         (await call<{ inviteCode: string }>('regenerateInviteCode', { clientId })).inviteCode,
+
+      setNotificationPref: async (group, on) => {
+        if (!uid) return;
+        await friendly(() =>
+          updateDoc(doc(firebase().db, 'users', uid), {
+            [`notificationPrefs.${group}`]: on,
+            updatedAt: serverTimestamp(),
+          })
+        );
+      },
 
       deleteAccount: async () => {
         await call('deleteAccount');
@@ -174,7 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(firebase().auth).catch(() => undefined);
       },
     };
-  }, [state, finishTrainerSetup]);
+  }, [state, uid, account, coachName, finishTrainerSetup]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -183,4 +254,13 @@ export function useAuth(): AuthValue {
   const value = useContext(AuthContext);
   if (!value) throw new Error('useAuth must be used inside AuthProvider');
   return value;
+}
+
+/**
+ * The coach's name, wherever a screen says it. Without accounts the app is a
+ * single-coach demo, and that coach is the sample one.
+ */
+export function useCoachName(): string {
+  const { status, profile } = useAuth();
+  return status === 'off' ? TRAINER_NAME : (profile.coachName ?? profile.displayName ?? '');
 }

@@ -5,8 +5,9 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StoreProvider, useStore } from '../src/store';
-import { AuthProvider } from '../src/auth';
+import { AuthProvider, useAuth } from '../src/auth';
 import { CloudBridge } from '../src/sync/CloudBridge';
+import { NotificationsBridge } from '../src/components/NotificationsBridge';
 import { useIsDark, usePalette } from '../src/theme';
 import { CelebrationProvider } from '../src/celebration/CelebrationProvider';
 
@@ -39,6 +40,7 @@ function Root() {
   const palette = usePalette();
   const isDark = useIsDark();
   const store = useStore();
+  const auth = useAuth();
   // The same two calls the root gate uses. Protected removes the routes rather
   // than redirecting, so a URL typed straight into the address bar falls back
   // to index — the paywall — instead of rendering tabs for a signed-out user.
@@ -50,7 +52,9 @@ function Root() {
   // paywall — and a signed-in client the same — for as long as the read takes.
   // The fill matches the splash background, so it reads as the splash still
   // being up rather than as a flash of the wrong screen.
-  if (!store.hydrated) {
+  // With accounts, the saved sign-in has to be read back too, or a signed-in
+  // coach would see the welcome screen for as long as that takes.
+  if (!store.hydrated || auth.status === 'loading') {
     return <View style={{ flex: 1, backgroundColor: palette.background }} />;
   }
 
@@ -59,6 +63,7 @@ function Root() {
   return (
     <CelebrationProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NotificationsBridge />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -104,6 +109,15 @@ function Root() {
           options={{ presentation: 'modal', headerShown: true }}
         />
         <Stack.Screen name="join" options={{ presentation: 'modal', headerShown: true }} />
+        {/* Accounts. Pushed from the welcome screen, outside both guards. */}
+        <Stack.Screen
+          name="sign-in"
+          options={{ headerShown: true, title: 'Sign in', headerBackTitle: 'Back' }}
+        />
+        <Stack.Screen
+          name="create-account"
+          options={{ headerShown: true, title: 'Create account', headerBackTitle: 'Back' }}
+        />
         {/* Terms and Privacy. Outside both guards, because the paywall links to
             them before anybody has signed in or paid. */}
         <Stack.Screen

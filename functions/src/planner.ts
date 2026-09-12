@@ -7,6 +7,7 @@ import {
   topLoggedWeight,
   totalSets,
 } from '../../src/models';
+import type { NotificationGroup, NotificationPrefs } from '../../src/notificationPrefs';
 import {
   addDays,
   daysBetween,
@@ -27,15 +28,9 @@ import {
  * Wording is the draft from the design review and is Ryan's to change.
  */
 
-export type NotificationGroup = 'reminders' | 'activity' | 'motivation' | 'recap';
-export type NotificationPrefs = Record<NotificationGroup, boolean>;
-
-export const DEFAULT_PREFS: NotificationPrefs = {
-  reminders: true,
-  activity: true,
-  motivation: true,
-  recap: true,
-};
+// The switches are defined once, in the app, and shared with the server.
+export { DEFAULT_PREFS } from '../../src/notificationPrefs';
+export type { NotificationGroup, NotificationPrefs } from '../../src/notificationPrefs';
 
 export type MessageKind =
   | 'reminder'
