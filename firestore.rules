@@ -1,0 +1,137 @@
+rules_version = '2';
+
+// Who may read and write what. src/sync/policy.ts holds the same table so a
+// phone never queues a change these rules will refuse; change both together.
+//
+// Roles come from the sign-in token (custom claims), which only Cloud Functions
+// can set: role 'trainer' | 'client', plus trainerId and clientId for clients.
+// Layout: trainers/{trainerId}/{clients|workouts|dayTypes|movements}/{id}.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isTrainer(trainerId) {
+      return signedIn() && request.auth.token.role == 'trainer' && request.auth.uid == trainerId;
+    }
+
+    function isClientOf(trainerId) {
+      return signedIn()
+        && request.auth.token.role == 'client'
+        && request.auth.token.trainerId == trainerId;
+    }
+
+    function myClientId() {
+      return request.auth.token.clientId;
+    }
+
+    // Top-level fields this write changes, adds or removes.
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Every write the app makes carries the server time and its author.
+    function stamped() {
+      return request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    // Not a delete, and not touching something already deleted.
+    function live() {
+      return request.resource.data.get('deleted', false) == false
+        && (resource == null || resource.data.get('deleted', false) == false);
+    }
+
+    // Kept by Cloud Functions; no phone may write them.
+    function serverOwnedClientFields() {
+      return ['sessionsCompleted', 'inviteCode', 'inviteAccepted', 'uid'];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      // Created by Cloud Functions with the role. A person may change only their
+      // own preferences, never their role.
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && changed().hasOnly(['displayName', 'timezone', 'notificationPrefs', 'updatedAt']);
+
+      match /pushTokens/{token} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['platform', 'updatedAt'])
+          && request.resource.data.platform in ['ios', 'android'];
+      }
+    }
+
+    match /trainers/{trainerId} {
+      // A client sees their trainer's name. Written by Cloud Functions.
+      allow read: if isTrainer(trainerId) || isClientOf(trainerId);
+
+      match /clients/{clientId} {
+        allow read: if isTrainer(trainerId)
+          || (isClientOf(trainerId) && myClientId() == clientId);
+
+        allow create: if isTrainer(trainerId)
+          && stamped()
+          && !request.resource.data.keys().hasAny(serverOwnedClientFields());
+
+        allow update: if stamped() && (
+          (isTrainer(trainerId) && !changed().hasAny(serverOwnedClientFields()))
+          || (isClientOf(trainerId)
+            && myClientId() == clientId
+            && live()
+            && changed().hasOnly(['unit', 'updatedAt', 'updatedBy', 'deleted']))
+        );
+      }
+
+      match /workouts/{workoutId} {
+        allow read: if isTrainer(trainerId)
+          || (isClientOf(trainerId) && resource.data.clientId == myClientId());
+
+        allow create: if stamped()
+          && request.resource.data.clientId is string
+          && (isTrainer(trainerId)
+            || (isClientOf(trainerId)
+              && request.resource.data.clientId == myClientId()
+              && request.resource.data.loggedBy == 'client'));
+
+        allow update: if stamped() && (
+          (isTrainer(trainerId) && request.resource.data.clientId is string)
+          || (isClientOf(trainerId) && resource.data.clientId == myClientId() && (
+            // Their own solo session: everything, including deleting it.
+            (resource.data.loggedBy == 'client'
+              && request.resource.data.clientId == myClientId()
+              && request.resource.data.loggedBy == 'client')
+            // A session their trainer sent: only the "seen it" stamp.
+            || (live()
+              && changed().hasOnly(['seenByClientAt', 'updatedAt', 'updatedBy', 'deleted']))
+          ))
+        );
+      }
+
+      match /dayTypes/{dayTypeId} {
+        allow read: if isTrainer(trainerId) || isClientOf(trainerId);
+        allow create, update: if isTrainer(trainerId) && stamped();
+      }
+
+      match /movements/{movementId} {
+        allow read: if isTrainer(trainerId) || isClientOf(trainerId);
+        allow create, update: if isTrainer(trainerId) && stamped();
+      }
+    }
+
+    // Cloud Functions only. Readable codes could be enumerated to join as
+    // somebody else's client.
+    match /inviteCodes/{code} {
+      allow read, write: if false;
+    }
+
+    match /notificationLog/{entry} {
+      allow read, write: if false;
+    }
+  }
+}
