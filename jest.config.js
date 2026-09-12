@@ -15,5 +15,8 @@ module.exports = {
   setupFiles: [...(expoPreset.setupFiles ?? []), '<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: [...(expoPreset.setupFilesAfterEnv ?? []), '<rootDir>/jest.after-env.js'],
   testMatch: ['**/__tests__/**/*.test.ts?(x)'],
+  // functions/ has its own dependencies. Its pure modules (the notification
+  // planner) are tested here; its node_modules and build output are not ours.
+  modulePathIgnorePatterns: ['<rootDir>/functions/node_modules', '<rootDir>/functions/lib'],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/sampleData.ts', '!src/movementLibrary.ts'],
 };

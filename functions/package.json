@@ -1,0 +1,22 @@
+{
+  "name": "strength-coach-functions",
+  "private": true,
+  "description": "Cloud Functions for Strength Coach: accounts, invites and push notifications.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.4.0",
+    "firebase-functions": "^7.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "~5.9.3"
+  }
+}
