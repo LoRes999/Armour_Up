@@ -237,29 +237,55 @@ export function useCloudSync({
   };
 
   // Listen for other phones' changes once local data is ready for this account.
+  //
+  // A listener the server stops is started again, after a growing wait. It
+  // used to stop for good without a word, which left a client on a new phone
+  // on "Getting your programme…" forever with nothing in any log to say why.
+  // The usual cause is a sign-in token a moment older than the role it needs,
+  // which the next attempt has.
   useEffect(() => {
     if (!services || !scope || readyKey !== key) return;
-    const stop = services.adapter.subscribe(
-      scope,
-      syncRef.current.lastSyncedAt ?? 0,
-      (changes, serverTime) => {
-        if (changes.length === 0) {
-          setLastSyncedAt(Date.now());
-          return;
+    let alive = true;
+    let stop: (() => void) | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const start = () => {
+      retry = null;
+      stop = services.adapter.subscribe(
+        scope,
+        syncRef.current.lastSyncedAt ?? 0,
+        (changes, serverTime) => {
+          attempts = 0;
+          if (changes.length === 0) {
+            setLastSyncedAt(Date.now());
+            return;
+          }
+          inboxRef.current = {
+            changes: [...inboxRef.current.changes, ...changes],
+            serverTime: Math.max(inboxRef.current.serverTime, serverTime),
+          };
+          setInboxTick((tick) => tick + 1);
+        },
+        (error) => {
+          // One subscription is several listeners; the first to fail restarts them all.
+          if (!alive || retry) return;
+          console.warn('Cloud sync stopped listening for changes; trying again.', error);
+          stop?.();
+          stop = null;
+          attempts += 1;
+          retry = setTimeout(start, retryDelayMs(attempts));
         }
-        inboxRef.current = {
-          changes: [...inboxRef.current.changes, ...changes],
-          serverTime: Math.max(inboxRef.current.serverTime, serverTime),
-        };
-        setInboxTick((tick) => tick + 1);
-      },
-      () => {
-        // A listener that errors (usually a revoked sign-in) stops for good.
-        // The next sign-in starts a new one; local work carries on meanwhile.
-      }
-    );
+      );
+    };
+
+    start();
     schedule(0);
-    return stop;
+    return () => {
+      alive = false;
+      if (retry) clearTimeout(retry);
+      stop?.();
+    };
     // `scope` is read through `key`, which changes exactly when it does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [services, key, readyKey, schedule]);
