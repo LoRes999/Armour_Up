@@ -1,0 +1,198 @@
+import { FieldValue } from 'firebase-admin/firestore';
+import { HttpsError, onCall } from 'firebase-functions/https';
+import { CODE_LENGTH, UNITS, type WeightUnit, normaliseCode } from '../../src/models';
+import { SEED_DAY_TYPES } from '../../src/sampleData';
+import { SERVER, auth, db, requireUser, text, timeZoneOr } from './admin';
+import { DEFAULT_PREFS } from './planner';
+
+/**
+ * Accounts and roles. The role lives in the sign-in token (a custom claim),
+ * which only these functions can set, so the security rules can trust it. The
+ * app refreshes its token after calling one of them to pick up the change.
+ */
+
+/** Turns a new sign-up into a coach: profile, starter day types, and the claim. */
+export const createTrainerProfile = onCall(async (request) => {
+  const user = requireUser(request);
+  if (user.token.role === 'client') {
+    throw new HttpsError('failed-precondition', 'This account already belongs to a client.');
+  }
+  if (user.token.role === 'trainer') return { ok: true };
+
+  const name = text(request.data?.name, 'Name', 80);
+  const now = FieldValue.serverTimestamp();
+  const batch = db.batch();
+  batch.set(db.doc(`users/${user.uid}`), {
+    role: 'trainer',
+    email: user.token.email ?? null,
+    displayName: name,
+    timezone: timeZoneOr(request.data?.timezone),
+    notificationPrefs: DEFAULT_PREFS,
+    createdAt: now,
+  });
+  batch.set(db.doc(`trainers/${user.uid}`), { name, createdAt: now });
+  // The same starter split a new install has, so the builder is never empty.
+  for (const { id, ...fields } of SEED_DAY_TYPES) {
+    batch.set(db.doc(`trainers/${user.uid}/dayTypes/${id}`), {
+      ...fields,
+      deleted: false,
+      updatedAt: now,
+      updatedBy: SERVER,
+    });
+  }
+  await batch.commit();
+  await auth.setCustomUserClaims(user.uid, { role: 'trainer' });
+  return { ok: true };
+});
+
+const RATE_WINDOW_MS = 60 * 60_000;
+const RATE_MAX = 10;
+
+async function readInvite(rawCode: unknown) {
+  const code = normaliseCode(typeof rawCode === 'string' ? rawCode : '');
+  if (code.length !== CODE_LENGTH) {
+    throw new HttpsError('invalid-argument', 'An invite code is six letters and numbers.');
+  }
+  const invite = await db.collection('inviteCodes').doc(code).get();
+  if (!invite.exists) {
+    throw new HttpsError('not-found', "That code doesn't match an invitation. Check it with your coach.");
+  }
+  const { trainerId, clientId } = invite.data() as { trainerId: string; clientId: string };
+  return { code, trainerId, clientId };
+}
+
+/**
+ * What the invitation screen shows before anyone has an account: who is
+ * inviting whom. Callable without signing in, because the account is created
+ * after this. Returns only what that screen needs.
+ */
+export const previewInvite = onCall(async (request) => {
+  const { trainerId, clientId } = await readInvite(request.data?.code);
+  const [trainer, client] = await Promise.all([
+    db.doc(`trainers/${trainerId}`).get(),
+    db.doc(`trainers/${trainerId}/clients/${clientId}`).get(),
+  ]);
+  if (!client.exists || client.get('deleted') === true) {
+    throw new HttpsError('not-found', "That code doesn't match an invitation. Check it with your coach.");
+  }
+  return {
+    trainerName: String(trainer.get('name') ?? ''),
+    clientName: String(client.get('name') ?? ''),
+    email: String(client.get('email') ?? ''),
+    unit: client.get('unit') as WeightUnit,
+    alreadyJoined: Boolean(client.get('uid')),
+  };
+});
+
+/** Links a newly created account to the client record its code belongs to. */
+export const redeemInvite = onCall(async (request) => {
+  const user = requireUser(request);
+  if (user.token.role === 'trainer') {
+    throw new HttpsError('failed-precondition', "This is a coach's account. Sign out to join as a client.");
+  }
+
+  // Ten tries an hour per account: plenty for typos, useless for guessing.
+  const attempts = db.doc(`redeemAttempts/${user.uid}`);
+  await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(attempts);
+    const now = Date.now();
+    const windowStart = Number(snapshot.get('windowStart') ?? 0);
+    const count = now - windowStart > RATE_WINDOW_MS ? 0 : Number(snapshot.get('count') ?? 0);
+    if (count >= RATE_MAX) {
+      throw new HttpsError('resource-exhausted', 'Too many tries. Wait an hour, or ask your coach for the code again.');
+    }
+    tx.set(attempts, { windowStart: count === 0 ? now : windowStart, count: count + 1 });
+  });
+
+  const { trainerId, clientId } = await readInvite(request.data?.code);
+  if (user.token.role === 'client') {
+    if (user.token.clientId === clientId) return { trainerId, clientId };
+    throw new HttpsError('failed-precondition', 'This account has already joined a coach.');
+  }
+
+  const unit = UNITS.includes(request.data?.unit) ? (request.data.unit as WeightUnit) : undefined;
+  const clientRef = db.doc(`trainers/${trainerId}/clients/${clientId}`);
+  await db.runTransaction(async (tx) => {
+    const client = await tx.get(clientRef);
+    if (!client.exists || client.get('deleted') === true) {
+      throw new HttpsError('not-found', "That code doesn't match an invitation. Check it with your coach.");
+    }
+    const linked = client.get('uid');
+    if (linked && linked !== user.uid) {
+      throw new HttpsError(
+        'already-exists',
+        'This code has already been used on another account. Sign in with that account, or ask your coach for a new code.'
+      );
+    }
+    tx.update(clientRef, {
+      uid: user.uid,
+      inviteAccepted: true,
+      ...(unit ? { unit } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: SERVER,
+    });
+    tx.set(
+      db.doc(`users/${user.uid}`),
+      {
+        role: 'client',
+        email: user.token.email ?? null,
+        displayName: client.get('name') ?? '',
+        trainerId,
+        clientId,
+        timezone: timeZoneOr(request.data?.timezone),
+        notificationPrefs: DEFAULT_PREFS,
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+
+  await auth.setCustomUserClaims(user.uid, { role: 'client', trainerId, clientId });
+  await attempts.delete();
+  return { trainerId, clientId };
+});
+
+/**
+ * Deletes the account and its data, as App Store guideline 5.1.1(v) requires.
+ * A client takes their record and sessions with them. A coach takes their
+ * whole roster; their clients' accounts are disabled, since there is no longer
+ * a programme for them to see.
+ */
+export const deleteAccount = onCall(async (request) => {
+  const user = requireUser(request);
+  const { role, trainerId, clientId } = user.token as { role?: string; trainerId?: string; clientId?: string };
+
+  if (role === 'client' && trainerId && clientId) {
+    const workouts = await db
+      .collection(`trainers/${trainerId}/workouts`)
+      .where('clientId', '==', clientId)
+      .get();
+    const writer = db.bulkWriter();
+    workouts.docs.forEach((doc) => writer.delete(doc.ref));
+    const client = await db.doc(`trainers/${trainerId}/clients/${clientId}`).get();
+    const code = client.get('inviteCode');
+    if (typeof code === 'string' && code) writer.delete(db.collection('inviteCodes').doc(code));
+    writer.delete(client.ref);
+    await writer.close();
+  }
+
+  if (role === 'trainer') {
+    const clients = await db.collection(`trainers/${user.uid}/clients`).get();
+    const codes = await db.collection('inviteCodes').where('trainerId', '==', user.uid).get();
+    const writer = db.bulkWriter();
+    codes.docs.forEach((doc) => writer.delete(doc.ref));
+    await writer.close();
+    await Promise.all(
+      clients.docs
+        .map((doc) => doc.get('uid'))
+        .filter((uid): uid is string => typeof uid === 'string' && uid.length > 0)
+        .map((uid) => auth.updateUser(uid, { disabled: true }).catch(() => undefined))
+    );
+    await db.recursiveDelete(db.doc(`trainers/${user.uid}`));
+  }
+
+  await db.recursiveDelete(db.doc(`users/${user.uid}`));
+  await db.doc(`redeemAttempts/${user.uid}`).delete();
+  await auth.deleteUser(user.uid);
+  return { ok: true };
+});
