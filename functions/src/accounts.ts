@@ -167,12 +167,18 @@ export const deleteAccount = onCall(async (request) => {
       .collection(`trainers/${trainerId}/workouts`)
       .where('clientId', '==', clientId)
       .get();
+    // Tombstones, not deletes. The coach's phones learn what changed by asking
+    // for documents updated since they last looked, and a deleted document is
+    // simply absent from that answer: a phone that was closed when the client
+    // left kept them — name, email and every session — for good. Each document
+    // is replaced whole, so nothing about the person survives in it.
+    const tombstone = () => ({ deleted: true, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
     const writer = db.bulkWriter();
-    workouts.docs.forEach((doc) => writer.delete(doc.ref));
+    workouts.docs.forEach((doc) => writer.set(doc.ref, tombstone()));
     const client = await db.doc(`trainers/${trainerId}/clients/${clientId}`).get();
     const code = client.get('inviteCode');
     if (typeof code === 'string' && code) writer.delete(db.collection('inviteCodes').doc(code));
-    writer.delete(client.ref);
+    if (client.exists) writer.set(client.ref, tombstone());
     await writer.close();
   }
 
