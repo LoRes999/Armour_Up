@@ -16,6 +16,13 @@ export interface FlushDeps {
   /** The queue as it is right now — it may grow while an upload is in flight. */
   readOutbox: () => Outbox;
   updateOutbox: (change: (outbox: Outbox) => Outbox) => void;
+  /**
+   * Fetches a fresh sign-in token. Given one, an upload the server refuses is
+   * tried once more with it before anything is dropped: right after a coach
+   * creates their account, the token on the phone is a moment older than the
+   * role the server has just given them.
+   */
+  refreshToken?: () => Promise<void>;
 }
 
 export interface FlushResult {
@@ -28,12 +35,16 @@ export interface FlushResult {
 
 const retryable = (error: unknown) => !(error instanceof RemoteWriteError) || error.retryable;
 
+/** The adapter names the server's refusal in the error's message. */
+const deniedAccess = (error: unknown) => error instanceof RemoteWriteError && error.message === 'permission-denied';
+
 export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
   const result: FlushResult = { sent: 0, rejected: 0, interrupted: false };
 
   const confirm = (entries: readonly OutboxEntry[]) =>
     deps.updateOutbox((outbox) => acknowledge(outbox, entries));
 
+  let refreshed = false;
   for (;;) {
     const batch = deps.readOutbox().slice(0, BATCH_LIMIT);
     if (batch.length === 0) return result;
@@ -45,6 +56,18 @@ export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
       continue;
     } catch (error) {
       if (retryable(error)) return { ...result, interrupted: true };
+      // Refused for a role the token may simply not carry yet: send the same
+      // batch once more on a fresh token before giving any of it up. If the
+      // token can't be refreshed now (offline), everything waits for later.
+      if (deniedAccess(error) && deps.refreshToken && !refreshed) {
+        refreshed = true;
+        try {
+          await deps.refreshToken();
+        } catch {
+          return { ...result, interrupted: true };
+        }
+        continue;
+      }
     }
 
     // The server refused something in the batch, and a batch fails as a whole.

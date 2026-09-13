@@ -110,6 +110,7 @@ export function useCloudSync({
       const result = await flushOutbox({
         adapter: live.adapter,
         scope: current,
+        refreshToken: live.refreshAuth,
         readOutbox: () => syncRef.current.outbox,
         updateOutbox: (change) => {
           syncRef.current = { ...syncRef.current, outbox: change(syncRef.current.outbox) };

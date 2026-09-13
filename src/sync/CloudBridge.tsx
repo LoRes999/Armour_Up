@@ -18,7 +18,16 @@ export function CloudBridge({ children }: { children: React.ReactNode }) {
   // Created once: the engine keys its listeners on this object.
   const services = useMemo<CloudServices | null>(
     () =>
-      cloudConfig.enabled ? { adapter: firestoreAdapter(firebase().db), watchConnection } : null,
+      cloudConfig.enabled
+        ? {
+            adapter: firestoreAdapter(firebase().db),
+            watchConnection,
+            // Firestore reads the new token from Auth as soon as it arrives.
+            refreshAuth: async () => {
+              await firebase().auth.currentUser?.getIdToken(true);
+            },
+          }
+        : null,
     []
   );
 

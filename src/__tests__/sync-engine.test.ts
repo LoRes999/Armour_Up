@@ -58,6 +58,83 @@ function setup(ids: string[]) {
   };
 }
 
+/**
+ * Straight after a coach creates their account the server has given them the
+ * role, but the token on the phone is a moment older and doesn't carry it yet,
+ * so the first upload is refused. Treating that as final dropped every change
+ * in it — the whole roster the phone had from before accounts. A refused
+ * upload now refreshes the sign-in and tries once more before dropping anything.
+ */
+describe('an upload refused because the sign-in is a moment behind', () => {
+  class RoleArrivingServer implements RemoteAdapter {
+    tokenFresh = false;
+    batches: string[][] = [];
+
+    async write(_scope: SyncScope, entries: readonly OutboxEntry[]) {
+      if (!this.tokenFresh) throw new RemoteWriteError('permission-denied', false);
+      this.batches.push(entries.map((e) => e.id));
+    }
+
+    subscribe() {
+      return () => {};
+    }
+  }
+
+  function withServer(server: RemoteAdapter, ids: string[], refreshToken: () => Promise<void>) {
+    let outbox: Outbox = enqueue([], ids.map(entry));
+    return {
+      deps: {
+        adapter: server,
+        scope,
+        readOutbox: () => outbox,
+        updateOutbox: (change: (o: Outbox) => Outbox) => {
+          outbox = change(outbox);
+        },
+        refreshToken,
+      },
+      queue: () => outbox,
+    };
+  }
+
+  it('refreshes the sign-in and sends everything, dropping nothing', async () => {
+    const server = new RoleArrivingServer();
+    const refreshToken = jest.fn(async () => {
+      server.tokenFresh = true;
+    });
+    const { deps, queue } = withServer(server, ['a', 'b', 'c'], refreshToken);
+
+    const result = await flushOutbox(deps);
+
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ sent: 3, rejected: 0, interrupted: false });
+    expect(server.batches.flat()).toEqual(['a', 'b', 'c']);
+    expect(queue()).toEqual([]);
+  });
+
+  it('still drops what is refused after a fresh sign-in, and refreshes only once', async () => {
+    const server = new RoleArrivingServer();
+    // The account really has no role for this.
+    const refreshToken = jest.fn(async () => {});
+    const { deps } = withServer(server, ['a', 'b'], refreshToken);
+
+    const result = await flushOutbox(deps);
+
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ sent: 0, rejected: 2, interrupted: false });
+  });
+
+  it('keeps everything queued when the sign-in cannot be refreshed right now', async () => {
+    const server = new RoleArrivingServer();
+    const refreshToken = jest.fn(() => Promise.reject(new Error('offline')));
+    const { deps, queue } = withServer(server, ['a', 'b'], refreshToken);
+
+    const result = await flushOutbox(deps);
+
+    expect(result).toEqual({ sent: 0, rejected: 0, interrupted: true });
+    expect(queue().map((e) => e.id)).toEqual(['a', 'b']);
+  });
+});
+
 describe('uploading the queue', () => {
   it('sends everything and empties the queue', async () => {
     const { server, deps, queue } = setup(['a', 'b', 'c']);

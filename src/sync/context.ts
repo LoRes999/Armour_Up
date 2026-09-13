@@ -13,6 +13,8 @@ export interface CloudServices {
   adapter: RemoteAdapter;
   /** Reports the connection now and whenever it changes. Returns an unsubscribe. */
   watchConnection: (onChange: (online: boolean) => void) => () => void;
+  /** Fetches a fresh sign-in token, so an upload refused for a role the old one lacked can be tried again. */
+  refreshAuth?: () => Promise<void>;
 }
 
 export interface CloudSession {
