@@ -105,12 +105,19 @@ export function useCloudSync({
     const { scope: current, services: live, online: connected } = latest.current;
     if (!current || !live || !connected || flushing.current) return;
     if (syncRef.current.outbox.length === 0) return;
+    // The queue belongs to the account it was prepared for. Until a new
+    // sign-in has been prepared, it is somebody else's.
+    if (syncRef.current.ownerUid !== current.uid) return;
+    const flushKey = scopeKey(current);
     flushing.current = true;
     try {
       const result = await flushOutbox({
         adapter: live.adapter,
         scope: current,
         refreshToken: live.refreshAuth,
+        // Stops the moment another account signs in: what is queued by then is theirs.
+        stillCurrent: () =>
+          scopeKey(latest.current.scope) === flushKey && syncRef.current.ownerUid === current.uid,
         readOutbox: () => syncRef.current.outbox,
         updateOutbox: (change) => {
           syncRef.current = { ...syncRef.current, outbox: change(syncRef.current.outbox) };
@@ -157,6 +164,8 @@ export function useCloudSync({
   const prepareScope = (current: SyncedData, next: SyncScope | null, nextKey: string | null): boolean => {
     const isFirst = handledKeyRef.current === undefined;
     handledKeyRef.current = nextKey;
+    // Changes heard for the previous account are not this one's to fold in.
+    inboxRef.current = { changes: [], serverTime: 0 };
     if (!next) {
       shadowRef.current = current;
       if (!isFirst) setReadyKey(null);
@@ -319,5 +328,5 @@ export function useCloudSync({
   }, [schedule]);
 
   const status: SyncStatus = { online, pending, lastSyncedAt, rejected };
-  return { capture, inboxTick, status, active: Boolean(services && scope) };
+  return { capture, inboxTick, status, active: Boolean(services && scope), scopeKey: key };
 }

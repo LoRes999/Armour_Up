@@ -23,6 +23,12 @@ export interface FlushDeps {
    * role the server has just given them.
    */
   refreshToken?: () => Promise<void>;
+  /**
+   * Whether the account this upload started for is still the one signed in.
+   * Checked before every write: after a sign-out the queue belongs to whoever
+   * signs in next, and their changes must never go up under this account.
+   */
+  stillCurrent?: () => boolean;
 }
 
 export interface FlushResult {
@@ -48,6 +54,7 @@ export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
   for (;;) {
     const batch = deps.readOutbox().slice(0, BATCH_LIMIT);
     if (batch.length === 0) return result;
+    if (deps.stillCurrent && !deps.stillCurrent()) return { ...result, interrupted: true };
 
     try {
       await deps.adapter.write(deps.scope, batch);
@@ -74,6 +81,7 @@ export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
     // Retry one at a time to find the change it will never accept, so that one
     // bad entry cannot hold every other change back for good.
     for (const entry of batch) {
+      if (deps.stillCurrent && !deps.stillCurrent()) return { ...result, interrupted: true };
       try {
         await deps.adapter.write(deps.scope, [entry]);
         result.sent += 1;

@@ -135,6 +135,21 @@ describe('an upload refused because the sign-in is a moment behind', () => {
   });
 });
 
+describe('an upload for an account that is no longer signed in', () => {
+  it('stops before the next batch and leaves the rest queued', async () => {
+    const ids = Array.from({ length: BATCH_LIMIT + 5 }, (_, i) => `w${i}`);
+    const { server, deps, queue } = setup(ids);
+    // Still this account for the first batch; somebody else's after it.
+    let checks = 0;
+
+    const result = await flushOutbox({ ...deps, stillCurrent: () => (checks += 1) === 1 });
+
+    expect(result.interrupted).toBe(true);
+    expect(server.batches).toHaveLength(1);
+    expect(queue()).toHaveLength(5);
+  });
+});
+
 describe('uploading the queue', () => {
   it('sends everything and empties the queue', async () => {
     const { server, deps, queue } = setup(['a', 'b', 'c']);

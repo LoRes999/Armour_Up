@@ -311,6 +311,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     subscription,
     // Changes from other phones wait for this effect to fold them in.
     cloud.inboxTick,
+    // So a new sign-in is prepared even when nothing above changes: a second
+    // coach on the same phone has the same role as the first.
+    cloud.scopeKey,
   ]);
 
   // Saves are coalesced over 300ms, and iOS pauses timers the moment the app
