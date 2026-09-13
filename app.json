@@ -2,6 +2,7 @@
   "expo": {
     "name": "Strength Coach",
     "slug": "strength-coach",
+    "owner": "henryarmour1",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "strengthcoach",
@@ -59,6 +60,11 @@
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3f16b4ff-f9b9-432b-b623-37cae668df67"
+      }
     }
   }
 }
