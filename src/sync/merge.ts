@@ -1,6 +1,6 @@
 import { sameValue } from './diff';
 import { discard, pendingFor } from './outbox';
-import { LOCAL_ONLY, META_FIELDS } from './policy';
+import { LOCAL_ONLY, META_FIELDS, SERVER_FALLBACKS } from './policy';
 import {
   type CollectionName,
   type Fields,
@@ -37,6 +37,13 @@ export function fromRemote(
   }
   for (const [key, fallback] of Object.entries(LOCAL_ONLY[collection])) {
     entity[key] = local && key in local ? local[key] : fallback;
+  }
+  // Kept by the server, which may not have worked it out yet. Until it has,
+  // keep this phone's value, or the starting one: a missing field reached the
+  // screen as "undefined".
+  for (const [key, fallback] of Object.entries(SERVER_FALLBACKS[collection])) {
+    if (key in entity) continue;
+    entity[key] = local && typeof local[key] === typeof fallback ? local[key] : fallback;
   }
   entity.id = id;
   return entity;

@@ -1,4 +1,4 @@
-import type { CustomMovement, Workout } from '../models';
+import type { Client, CustomMovement, Workout } from '../models';
 import { planUploads } from '../sync/diff';
 import { applyRemoteChanges } from '../sync/merge';
 import { enqueue } from '../sync/outbox';
@@ -35,6 +35,63 @@ const remoteWorkout = (over: Partial<Workout> = {}): RemoteChange => {
     data: { ...fields, updatedAt: 1757613600000, updatedBy: 'u-other', trainerId: 'u-coach' },
   };
 };
+
+/**
+ * The session count belongs to the server, which works it out from completed
+ * workouts — so a client brought over from before accounts, or one with
+ * nothing finished yet, arrives from the server with no count at all. That copy
+ * replaced the phone's, and the SESSIONS tile read "undefined" (adding one to
+ * it made NaN). Until the server has a count, the phone keeps its own, or 0.
+ */
+describe("a client whose session count the server hasn't worked out yet", () => {
+  const client = (over: Partial<Client> = {}): Client => ({
+    id: 'c-1',
+    name: 'Jordan Real',
+    email: 'jordan@example.com',
+    unit: 'kg',
+    blockName: 'Onboarding',
+    blockWeek: 1,
+    blockLength: 4,
+    adherence: 100,
+    sessionsCompleted: 12,
+    inviteCode: 'ABCDEF',
+    inviteAccepted: false,
+    ...over,
+  });
+
+  /** The client as the server holds it: no id, no count, plus bookkeeping. */
+  const fromServer = (over: Record<string, unknown> = {}): RemoteChange => {
+    const { id, sessionsCompleted: _count, ...fields } = client();
+    return {
+      collection: 'clients',
+      id,
+      data: { ...fields, updatedAt: 1757613600000, updatedBy: 'server', ...over },
+    };
+  };
+
+  it("keeps this phone's count", () => {
+    const { data: next } = applyRemoteChanges(
+      data({ clients: [client()] }),
+      [fromServer({ name: 'Jordan R.' })],
+      []
+    );
+    expect(next.clients[0]).toMatchObject({ name: 'Jordan R.', sessionsCompleted: 12 });
+  });
+
+  it('starts from 0 when this phone has none either', () => {
+    const { data: next } = applyRemoteChanges(data(), [fromServer()], []);
+    expect(next.clients[0].sessionsCompleted).toBe(0);
+  });
+
+  it("takes the server's count once it has one", () => {
+    const { data: next } = applyRemoteChanges(
+      data({ clients: [client()] }),
+      [fromServer({ sessionsCompleted: 5 })],
+      []
+    );
+    expect(next.clients[0].sessionsCompleted).toBe(5);
+  });
+});
 
 describe('changes arriving from the server', () => {
   it('adds a new document, without the server bookkeeping', () => {

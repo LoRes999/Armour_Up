@@ -22,6 +22,19 @@ export const SERVER_OWNED: Readonly<Record<CollectionName, readonly string[]>> =
 };
 
 /**
+ * What a server-owned field reads as before the server has set it. The
+ * session count only exists once the server has recounted a completed
+ * workout, so a client brought over from before accounts, or one with nothing
+ * finished yet, arrives without one.
+ */
+export const SERVER_FALLBACKS: Readonly<Record<CollectionName, Readonly<Record<string, unknown>>>> = {
+  clients: { sessionsCompleted: 0 },
+  dayTypes: {},
+  movements: {},
+  workouts: {},
+};
+
+/**
  * Meaningful on this phone only. Never uploaded, and kept from the local copy
  * when the server's version arrives. Movement photos are files on the
  * trainer's phone until photo upload exists.
