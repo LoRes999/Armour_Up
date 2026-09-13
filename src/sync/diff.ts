@@ -74,7 +74,11 @@ export function diffData(
       if (old === entity) continue;
       const fields = changedFields(old as Fields | undefined, entity as unknown as Fields);
       if (Object.keys(fields).length === 0) continue;
-      out.push({ entry: { collection, id: entity.id, op: 'upsert', fields, rev: 0 }, entity });
+      const entry: OutboxEntry = { collection, id: entity.id, op: 'upsert', fields, rev: 0 };
+      // New to the comparison copy means new to the server too: everything
+      // that came from the server has been folded into that copy.
+      if (old === undefined) entry.created = true;
+      out.push({ entry, entity });
     }
     // Whatever is left was removed.
     for (const [id, entity] of previous) {

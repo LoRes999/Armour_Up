@@ -1,4 +1,4 @@
-import { acknowledge } from './outbox';
+import { acknowledge, markSent } from './outbox';
 import { type Outbox, type OutboxEntry, type RemoteAdapter, RemoteWriteError, type SyncScope } from './types';
 
 /**
@@ -57,6 +57,7 @@ export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
     if (deps.stillCurrent && !deps.stillCurrent()) return { ...result, interrupted: true };
 
     try {
+      deps.updateOutbox((outbox) => markSent(outbox, batch));
       await deps.adapter.write(deps.scope, batch);
       confirm(batch);
       result.sent += batch.length;
@@ -83,6 +84,7 @@ export async function flushOutbox(deps: FlushDeps): Promise<FlushResult> {
     for (const entry of batch) {
       if (deps.stillCurrent && !deps.stillCurrent()) return { ...result, interrupted: true };
       try {
+        deps.updateOutbox((outbox) => markSent(outbox, [entry]));
         await deps.adapter.write(deps.scope, [entry]);
         result.sent += 1;
       } catch (error) {

@@ -150,6 +150,35 @@ describe('an upload for an account that is no longer signed in', () => {
   });
 });
 
+describe('a new document deleted while its creation is being uploaded', () => {
+  it('still sends the delete, so the server keeps no copy the phone threw away', async () => {
+    let outbox: Outbox = enqueue([], [{ ...entry('w-new'), created: true }]);
+    const sent: string[] = [];
+    const server: RemoteAdapter = {
+      async write(_scope, entries) {
+        sent.push(...entries.map((e) => `${e.op}:${e.id}`));
+        // The coach deletes it while this upload is still on its way.
+        if (entries.some((e) => e.id === 'w-new' && e.op === 'upsert')) {
+          outbox = enqueue(outbox, [{ ...entry('w-new'), op: 'delete', fields: {} }]);
+        }
+      },
+      subscribe: () => () => {},
+    };
+
+    await flushOutbox({
+      adapter: server,
+      scope,
+      readOutbox: () => outbox,
+      updateOutbox: (change) => {
+        outbox = change(outbox);
+      },
+    });
+
+    expect(sent).toEqual(['upsert:w-new', 'delete:w-new']);
+    expect(outbox).toEqual([]);
+  });
+});
+
 describe('uploading the queue', () => {
   it('sends everything and empties the queue', async () => {
     const { server, deps, queue } = setup(['a', 'b', 'c']);

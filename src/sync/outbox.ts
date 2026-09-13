@@ -24,8 +24,11 @@ export function enqueue(outbox: Outbox, incoming: readonly OutboxEntry[]): Outbo
       continue;
     }
     const waiting = next[index];
-    if (change.op === 'delete') {
-      next[index] = { ...waiting, op: 'delete', fields: {}, rev: waiting.rev + 1 };
+    if (change.op === 'delete' && waiting.created && !waiting.sent) {
+      // Created and deleted before the server ever saw it: nothing to send.
+      next.splice(index, 1);
+    } else if (change.op === 'delete') {
+      next[index] = { collection: waiting.collection, id: waiting.id, op: 'delete', fields: {}, rev: waiting.rev + 1 };
     } else if (waiting.op === 'delete') {
       // Recreated under the same id before the delete went up: the new
       // version is all that matters, and the comparison sent every field.
@@ -49,6 +52,18 @@ export function acknowledge(outbox: Outbox, sent: readonly OutboxEntry[]): Outbo
   if (sent.length === 0) return outbox;
   return outbox.filter(
     (entry) => !sent.some((done) => sameDoc(done, entry) && done.rev === entry.rev)
+  );
+}
+
+/**
+ * Marks entries as handed to the server, just before they are written. A new
+ * document deleted after this is still deleted there: its creation may
+ * already have landed.
+ */
+export function markSent(outbox: Outbox, sending: readonly OutboxEntry[]): Outbox {
+  if (sending.length === 0) return outbox;
+  return outbox.map((entry) =>
+    !entry.sent && sending.some((item) => sameDoc(item, entry)) ? { ...entry, sent: true } : entry
   );
 }
 

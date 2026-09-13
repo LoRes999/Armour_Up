@@ -48,6 +48,14 @@ export interface OutboxEntry {
    * or the newer change would never be sent.
    */
   rev: number;
+  /**
+   * A document the server has never seen, queued in full. Deleted again before
+   * it is sent, it leaves nothing to upload: a delete of it would reach the
+   * server as a bare tombstone, which the rules refuse.
+   */
+  created?: boolean;
+  /** Handed to the server at least once, so its creation may already be there. */
+  sent?: boolean;
 }
 
 /** Waiting changes, oldest first, at most one entry per document. */
