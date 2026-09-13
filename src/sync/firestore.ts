@@ -75,11 +75,11 @@ export function firestoreAdapter(db: Firestore): RemoteAdapter {
         for (const [key, value] of Object.entries(entry.fields)) {
           fields[key] = value === null ? deleteField() : value;
         }
-        batch.set(
-          ref(scope, entry.collection, entry.id),
-          { ...fields, deleted: false, ...stamp },
-          { merge: true }
-        );
+        // Never `deleted: false`. A document with no `deleted` field reads as
+        // live everywhere, and leaving it out means an edit from a phone that
+        // was offline when the document was deleted elsewhere cannot bring it
+        // back: the delete wins, as it does in merge.ts.
+        batch.set(ref(scope, entry.collection, entry.id), { ...fields, ...stamp }, { merge: true });
       }
       try {
         await batch.commit();

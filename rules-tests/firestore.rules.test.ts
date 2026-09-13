@@ -19,6 +19,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { firestoreAdapter } from '../src/sync/firestore';
+import type { SyncScope } from '../src/sync/types';
 
 /**
  * firestore.rules, exercised against the real rules engine in the emulator.
@@ -216,6 +218,53 @@ describe('accounts', () => {
     await assertFails(
       setDoc(doc(marcus(), `users/${MARCUS}/pushTokens/ExponentPushToken[def]`), { platform: 'fax' })
     );
+  });
+});
+
+/** A document as the server holds it, read past the rules. */
+async function serverCopy(path: string) {
+  let data: Record<string, unknown> | undefined;
+  await env.withSecurityRulesDisabled(async (context) => {
+    data = (await getDoc(doc(context.firestore() as unknown as Firestore, path))).data();
+  });
+  return data;
+}
+
+describe('the sync adapter', () => {
+  const coachScope: SyncScope = { role: 'trainer', uid: COACH, trainerId: COACH };
+  const marcusScope: SyncScope = { role: 'client', uid: MARCUS, trainerId: COACH, clientId: 'c-marcus' };
+
+  it('never brings back a document deleted on another phone', async () => {
+    const adapter = firestoreAdapter(coach());
+    await adapter.write(coachScope, [{ collection: 'workouts', id: 'w-coach', op: 'delete', fields: {}, rev: 0 }]);
+
+    // The coach's tablet was offline when that happened, and uploads its edit now.
+    await adapter.write(coachScope, [
+      { collection: 'workouts', id: 'w-coach', op: 'upsert', fields: { name: 'Push Day B' }, rev: 0 },
+    ]);
+
+    expect((await serverCopy(`trainers/${COACH}/workouts/w-coach`))?.deleted).toBe(true);
+  });
+
+  it("lets a client's solo session stay deleted too", async () => {
+    const adapter = firestoreAdapter(marcus());
+    await adapter.write(marcusScope, [{ collection: 'workouts', id: 'w-solo', op: 'delete', fields: {}, rev: 0 }]);
+    await adapter.write(marcusScope, [
+      { collection: 'workouts', id: 'w-solo', op: 'upsert', fields: { name: 'Solo again' }, rev: 0 },
+    ]);
+
+    expect((await serverCopy(`trainers/${COACH}/workouts/w-solo`))?.deleted).toBe(true);
+  });
+
+  it('creates new documents that read as live', async () => {
+    const { deleted: _stored, ...fields } = trainerWorkout;
+    await firestoreAdapter(coach()).write(coachScope, [
+      { collection: 'workouts', id: 'w-created', op: 'upsert', fields: { ...fields, name: 'Brand new' }, rev: 0 },
+    ]);
+
+    const created = await serverCopy(`trainers/${COACH}/workouts/w-created`);
+    expect(created?.name).toBe('Brand new');
+    expect(created?.deleted).not.toBe(true);
   });
 });
 
