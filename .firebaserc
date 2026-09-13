@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-strength-coach"
+    "default": "demo-strength-coach",
+    "live": "strength-coach-a0023"
   }
 }
