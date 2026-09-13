@@ -264,6 +264,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // account's sign-in token, not from a button on this phone.
   const cloudSession = useCloud();
   const cloudScopeKey = cloudSession ? JSON.stringify(cloudSession.scope) : null;
+  // Accounts are switched on for this build; fixed for the life of the app.
+  const cloudOn = cloudSession?.services != null;
   useEffect(() => {
     if (!hydrated || !cloudSession) return;
     const scope = cloudSession.scope;
@@ -823,7 +825,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
        * nothing at all was removed.
        */
       deleteAccount: () => {
-        if (role === 'trainer') {
+        if (cloudOn) {
+          // With accounts, this phone held one account's data — on a client's
+          // phone that includes their coach's day types and movements. All of it
+          // goes: the next person to sign up here starts from a fresh install
+          // rather than adopting, and uploading, somebody else's.
+          setClients([]);
+          setWorkouts([]);
+          setCustomMovements([]);
+          setDayTypes(SEED_DAY_TYPES);
+        } else if (role === 'trainer') {
           setClients([]);
           setWorkouts([]);
           setCustomMovements([]);
@@ -1004,6 +1015,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     subscription,
     purchasePending,
     mutate,
+    cloudOn,
     cloud.active,
     cloud.status.online,
     cloud.status.pending,

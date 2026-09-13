@@ -237,6 +237,96 @@ describe('a coach phone with cloud sync', () => {
   });
 });
 
+/**
+ * With accounts, a phone holds one account's data, and deleting the account has
+ * to leave a fresh install behind. It used to keep the day types and — on a
+ * client's phone — the coach's own movements, then write them straight back
+ * after clearing storage. The next coach to sign up on that phone adopted them
+ * and uploaded somebody else's day types and movements into their own account.
+ */
+describe('deleting the account on a phone with cloud sync', () => {
+  const jordan: SyncScope = { role: 'client', uid: 'u-jordan', trainerId: 'u-coach', clientId: 'client-real' };
+  const [firstDayType, ...otherDayTypes] = SEED_DAY_TYPES;
+  const renamedDayTypes = [{ ...firstDayType, name: 'Chest' }, ...otherDayTypes];
+  const coachesMovement = {
+    id: 'mv-landmine',
+    name: 'Landmine Press',
+    description: "Sam's own cue sheet.",
+    cues: ['Brace first'],
+    muscles: ['Shoulders'],
+    photoUris: [],
+  };
+
+  /** What is left in storage once any save still pending has been written. */
+  const leftOnPhone = async () => {
+    await flushSnapshot();
+    return JSON.parse((await AsyncStorage.getItem(KEY)) ?? 'null') as {
+      clients: unknown[];
+      workouts: unknown[];
+      customMovements: unknown[];
+      dayTypes: unknown[];
+    } | null;
+  };
+
+  const expectFreshInstall = (saved: Awaited<ReturnType<typeof leftOnPhone>>) => {
+    if (saved === null) return;
+    expect(saved.clients).toEqual([]);
+    expect(saved.workouts).toEqual([]);
+    expect(saved.customMovements).toEqual([]);
+    expect(saved.dayTypes).toEqual(SEED_DAY_TYPES);
+  };
+
+  it("leaves nothing of the coach's on a client's phone", async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify(
+        savedStore({
+          role: 'client',
+          signedInClientId: 'client-real',
+          dayTypes: renamedDayTypes,
+          customMovements: [coachesMovement],
+          sync: { ...EMPTY_SYNC, ownerUid: 'u-jordan' },
+        })
+      )
+    );
+    const { rendered } = mount(jordan);
+    const { result } = await rendered;
+    await hydrated(result);
+    await waitFor(() => expect(result.current.customMovements).toHaveLength(1));
+
+    await act(() => {
+      result.current.deleteAccount();
+    });
+
+    expect(result.current.customMovements).toEqual([]);
+    expect(result.current.dayTypes).toEqual(SEED_DAY_TYPES);
+    expectFreshInstall(await leftOnPhone());
+  });
+
+  it("puts a coach's phone back to a fresh install", async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify(
+        savedStore({
+          dayTypes: renamedDayTypes,
+          customMovements: [coachesMovement],
+          sync: { ...EMPTY_SYNC, ownerUid: 'u-coach' },
+        })
+      )
+    );
+    const { rendered } = mount(coach);
+    const { result } = await rendered;
+    await hydrated(result);
+
+    await act(() => {
+      result.current.deleteAccount();
+    });
+
+    expect(result.current.dayTypes).toEqual(SEED_DAY_TYPES);
+    expectFreshInstall(await leftOnPhone());
+  });
+});
+
 describe('without cloud sync', () => {
   it('queues nothing, exactly as before accounts', async () => {
     const { server, rendered } = mount(null);
