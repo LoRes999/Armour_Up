@@ -158,7 +158,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!cloudConfig.enabled) return;
+    // The account the listener last reported. Reading a role takes a moment,
+    // and one that finishes after the account has changed — a sign-out, or
+    // somebody else signing in — is about a person who is no longer here. It
+    // used to mark them signed in again after they had signed out.
+    let currentUid: string | null = null;
     return onIdTokenChanged(firebase().auth, (user) => {
+      currentUid = user?.uid ?? null;
       if (!user) {
         setState({ status: 'signedOut', user: null, claims: {} });
         return;
@@ -166,12 +172,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void user
         .getIdTokenResult()
         .then((token) => {
+          if (currentUid !== user.uid) return;
           const { role, trainerId, clientId } = token.claims as AccountClaims;
           const claims = { role, trainerId, clientId };
           void rememberClaims(user.uid, claims);
           setState({ status: 'signedIn', user, claims });
         })
-        .catch(async () => setState({ status: 'signedIn', user, claims: await rememberedClaims(user.uid) }));
+        .catch(async () => {
+          const claims = await rememberedClaims(user.uid);
+          if (currentUid !== user.uid) return;
+          setState({ status: 'signedIn', user, claims });
+        });
     });
   }, []);
 

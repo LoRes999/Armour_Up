@@ -71,6 +71,41 @@ beforeEach(async () => {
   listener = null;
 });
 
+/**
+ * Reading the role takes a moment. If the person signs out during it, the
+ * answer used to arrive afterwards and mark them signed in again — with the
+ * account they had just left.
+ */
+describe('a role check that finishes after signing out', () => {
+  it('does not sign the account back in', async () => {
+    let finish!: (token: { claims: Record<string, unknown> }) => void;
+    const slow = {
+      uid: 'u-sam',
+      email: 'sam@example.com',
+      getIdTokenResult: () =>
+        new Promise<{ claims: Record<string, unknown> }>((resolve) => {
+          finish = resolve;
+        }),
+    };
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    await act(() => {
+      listener?.(slow); // signed in; the role is still being read…
+    });
+    await act(() => {
+      listener?.(null); // …and signed out before it arrives
+    });
+    await waitFor(() => expect(result.current.status).toBe('signedOut'));
+
+    await act(async () => {
+      finish({ claims: { role: 'trainer' } });
+    });
+
+    expect(result.current.status).toBe('signedOut');
+    expect(result.current.uid).toBeNull();
+  });
+});
+
 describe('a signed-in coach opening the app offline', () => {
   it('keeps the role their last connected launch had', async () => {
     const first = await launch(online('u-sam', { role: 'trainer' }));
