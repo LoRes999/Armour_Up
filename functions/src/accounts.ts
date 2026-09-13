@@ -188,12 +188,21 @@ export const deleteAccount = onCall(async (request) => {
     const writer = db.bulkWriter();
     codes.docs.forEach((doc) => writer.delete(doc.ref));
     await writer.close();
-    await Promise.all(
-      clients.docs
-        .map((doc) => doc.get('uid'))
-        .filter((uid): uid is string => typeof uid === 'string' && uid.length > 0)
-        .map((uid) => auth.updateUser(uid, { disabled: true }).catch(() => undefined))
-    );
+    // Their clients' accounts go with it (Ryan's call, 2026-09-13). Only
+    // disabling them left each client's email taken for good, their profile
+    // and push tokens on the server, and no way to sign in and delete
+    // themselves. Anything but an already-gone sign-in stops here, so the
+    // deletion can be asked again.
+    const clientUids = clients.docs
+      .map((doc) => doc.get('uid'))
+      .filter((uid): uid is string => typeof uid === 'string' && uid.length > 0);
+    for (const clientUid of clientUids) {
+      await db.recursiveDelete(db.doc(`users/${clientUid}`));
+      await db.doc(`redeemAttempts/${clientUid}`).delete();
+      await auth.deleteUser(clientUid).catch((error: { code?: string }) => {
+        if (error?.code !== 'auth/user-not-found') throw error;
+      });
+    }
     await db.recursiveDelete(db.doc(`trainers/${user.uid}`));
   }
 

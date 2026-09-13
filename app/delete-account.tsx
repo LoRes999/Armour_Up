@@ -99,7 +99,7 @@ export default function DeleteAccount() {
 
         <Text style={{ fontSize: 14, color: p.dim, lineHeight: 21, marginTop: -8 }}>
           {isTrainer
-            ? `You cannot undo this. Every client loses access to their programme and history. Cancel your subscription separately in the App Store.`
+            ? `You cannot undo this. Your clients' accounts are deleted too, along with their programs and history. Cancel your subscription separately in the App Store.`
             : `You cannot undo this. ${coachName} will be notified that you have left.`}
         </Text>
 

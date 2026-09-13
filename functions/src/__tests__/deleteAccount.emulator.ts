@@ -73,6 +73,41 @@ function expectTombstone(data: Record<string, unknown> | undefined) {
   expect(data?.deleted).toBe(true);
 }
 
+/**
+ * A coach's deletion used to disable their clients' accounts and stop there:
+ * each client's email stayed taken for good, their profile and push tokens
+ * stayed on the server, and — unable to sign in — they could never delete
+ * themselves. Ryan decided (2026-09-13) those accounts are deleted too.
+ */
+describe('a coach deleting their account', () => {
+  const asCoach = {
+    auth: { uid: COACH, token: { role: 'trainer' } },
+    data: undefined,
+  } as unknown as CallableRequest;
+
+  it("deletes their clients' accounts with it, leaving nothing of them behind", async () => {
+    const { db, auth } = admin;
+    await auth.deleteUser(COACH).catch(() => undefined);
+    await auth.createUser({ uid: COACH, email: 'sam@example.com' });
+    await db.recursiveDelete(db.doc(`users/${COACH}`));
+    await db.doc(`users/${COACH}`).set({ role: 'trainer', displayName: 'Sam Coach' });
+    await db.doc(`users/${JORDAN_UID}/pushTokens/ExponentPushToken[jordan]`).set({ platform: 'ios' });
+    await db.doc(`redeemAttempts/${JORDAN_UID}`).set({ windowStart: 1, count: 1 });
+
+    await accounts.deleteAccount.run(asCoach);
+
+    await expect(auth.getUser(JORDAN_UID)).rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect(await read(`users/${JORDAN_UID}`)).toBeUndefined();
+    expect(await read(`users/${JORDAN_UID}/pushTokens/ExponentPushToken[jordan]`)).toBeUndefined();
+    expect(await read(`redeemAttempts/${JORDAN_UID}`)).toBeUndefined();
+
+    await expect(auth.getUser(COACH)).rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect(await read(`trainers/${COACH}`)).toBeUndefined();
+    expect(await read(`trainers/${COACH}/clients/${JORDAN}`)).toBeUndefined();
+    expect(await read(`inviteCodes/${CODE}`)).toBeUndefined();
+  });
+});
+
 describe('a client deleting their account', () => {
   it("leaves tombstones a coach's phone can still find, with nothing about the person", async () => {
     await accounts.deleteAccount.run(asJordan);
