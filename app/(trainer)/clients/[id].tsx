@@ -113,8 +113,18 @@ export default function ClientDetail() {
             onPress={() =>
               confirm({
                 title: 'Issue a new code?',
-                message: `${client.name.split(' ')[0]}'s current code stops working straight away.`,
-                confirmLabel: 'New code',
+                // With accounts, a new code also signs out whoever joined with
+                // the old one, so a code that reached the wrong person can be
+                // taken back. Wording chosen by Ryan, 2026-09-13.
+                ...(store.cloudActive && client.inviteAccepted
+                  ? {
+                      message: `${client.name.split(' ')[0]} will be signed out and needs the new code to get back in. Their current code stops working straight away.`,
+                      confirmLabel: 'Issue new code',
+                    }
+                  : {
+                      message: `${client.name.split(' ')[0]}'s current code stops working straight away.`,
+                      confirmLabel: 'New code',
+                    }),
                 destructive: true,
                 // With accounts the server issues it, so no two coaches share a code.
                 onConfirm: () => {
@@ -129,9 +139,10 @@ export default function ClientDetail() {
               })
             }
             hitSlop={8}
+            accessibilityRole="button"
             style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '700', color: p.accent }}>New</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: p.accent }}>New code</Text>
           </Pressable>
         </Card>
 

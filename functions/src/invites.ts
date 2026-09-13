@@ -1,7 +1,7 @@
 import { FieldValue, type Transaction } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/https';
 import { type Client, UNITS, type WeightUnit, makeInviteCode } from '../../src/models';
-import { SERVER, db, requireTrainer, text } from './admin';
+import { SERVER, auth, db, requireTrainer, text } from './admin';
 
 /**
  * Invite codes are unique across every coach, so they are handed out here
@@ -69,20 +69,28 @@ export const createInvite = onCall(async (request) => {
 });
 
 /**
- * A new code for an existing client; the old one stops working at once. A
- * client who has already joined stays joined — they sign in with their email.
+ * A new code for an existing client; the old one stops working at once. It
+ * also takes the client back from whoever joined with the old code, so a code
+ * that reached the wrong person can be withdrawn — the real client joins again
+ * with the new one. (Ryan's call, 2026-09-13; before, the account stayed joined
+ * for good and the real client was told the code was "already used".)
  */
 export const regenerateInviteCode = onCall(async (request) => {
   const trainer = requireTrainer(request);
   const clientId = text(request.data?.clientId, 'Client', 120);
   const ref = db.doc(`trainers/${trainer.uid}/clients/${clientId}`);
 
-  const inviteCode = await db.runTransaction(async (tx) => {
+  const { inviteCode, unlinked } = await db.runTransaction(async (tx) => {
+    // Every read before any write, as transactions require.
     const snapshot = await tx.get(ref);
     if (!snapshot.exists || snapshot.get('deleted') === true) {
       throw new HttpsError('not-found', 'That client is no longer on your roster.');
     }
+    const linked = snapshot.get('uid');
+    const linkedUid = typeof linked === 'string' && linked ? linked : null;
+    const account = linkedUid ? await tx.get(db.doc(`users/${linkedUid}`)) : null;
     const next = await allocateCode(tx);
+
     const previous = snapshot.get('inviteCode');
     if (typeof previous === 'string' && previous) tx.delete(db.collection('inviteCodes').doc(previous));
     tx.create(db.collection('inviteCodes').doc(next), {
@@ -90,9 +98,35 @@ export const regenerateInviteCode = onCall(async (request) => {
       clientId,
       createdAt: FieldValue.serverTimestamp(),
     });
-    tx.update(ref, { inviteCode: next, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
-    return next;
+    tx.update(ref, {
+      inviteCode: next,
+      inviteAccepted: false,
+      uid: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: SERVER,
+    });
+    // So the scheduler stops treating that account as this client.
+    if (account?.exists) {
+      tx.update(account.ref, {
+        role: FieldValue.delete(),
+        trainerId: FieldValue.delete(),
+        clientId: FieldValue.delete(),
+      });
+    }
+    return { inviteCode: next, unlinked: linkedUid };
   });
+
+  if (unlinked) {
+    // The role lives in the sign-in token. Clearing it and revoking the refresh
+    // tokens signs that account out everywhere; the token it already holds
+    // keeps working until it expires, within the hour. Only an account that no
+    // longer exists is let pass — anything else must not leave access behind.
+    const unlessGone = (error: { code?: string }) => {
+      if (error?.code !== 'auth/user-not-found') throw error;
+    };
+    await auth.setCustomUserClaims(unlinked, null).catch(unlessGone);
+    await auth.revokeRefreshTokens(unlinked).catch(unlessGone);
+  }
 
   return { inviteCode };
 });
