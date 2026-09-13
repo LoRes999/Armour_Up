@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   type User,
   createUserWithEmailAndPassword,
@@ -108,6 +109,31 @@ async function friendly<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * The role this phone last read from an account's token. Reading it again
+ * needs a fresh token, and a token over an hour old can only be refreshed with
+ * a connection — so without this, a coach opening the app offline had no role
+ * and was sent to "Finish setting up". Kept for one account at a time and only
+ * handed back to that account; the security rules still check the real token.
+ */
+const CLAIMS_KEY = 'strength-coach/claims';
+
+async function rememberClaims(uid: string, claims: AccountClaims) {
+  await AsyncStorage.setItem(CLAIMS_KEY, JSON.stringify({ uid, claims })).catch(() => undefined);
+}
+
+async function rememberedClaims(uid: string): Promise<AccountClaims> {
+  try {
+    const saved = JSON.parse((await AsyncStorage.getItem(CLAIMS_KEY)) ?? 'null') as {
+      uid?: string;
+      claims?: AccountClaims;
+    } | null;
+    return saved?.uid === uid && saved.claims ? saved.claims : {};
+  } catch {
+    return {};
+  }
+}
+
 async function call<T>(name: string, data?: unknown): Promise<T> {
   return friendly(async () => (await httpsCallable(firebase().functions, name)(data)).data as T);
 }
@@ -140,9 +166,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .getIdTokenResult()
         .then((token) => {
           const { role, trainerId, clientId } = token.claims as AccountClaims;
-          setState({ status: 'signedIn', user, claims: { role, trainerId, clientId } });
+          const claims = { role, trainerId, clientId };
+          void rememberClaims(user.uid, claims);
+          setState({ status: 'signedIn', user, claims });
         })
-        .catch(() => setState({ status: 'signedIn', user, claims: {} }));
+        .catch(async () => setState({ status: 'signedIn', user, claims: await rememberedClaims(user.uid) }));
     });
   }, []);
 
