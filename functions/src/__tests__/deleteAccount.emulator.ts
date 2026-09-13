@@ -90,6 +90,16 @@ describe('a client deleting their account', () => {
     await expect(admin.auth.getUser(JORDAN_UID)).rejects.toMatchObject({ code: 'auth/user-not-found' });
   });
 
+  // The first attempt removed everything but its answer never reached the
+  // phone, which asks again. That second call used to fail on the sign-in
+  // already being gone, so the app said "Your account was not deleted" for
+  // good and never cleared itself.
+  it('can be asked again after an attempt that already finished', async () => {
+    await accounts.deleteAccount.run(asJordan);
+
+    await expect(accounts.deleteAccount.run(asJordan)).resolves.toEqual({ ok: true });
+  });
+
   it("leaves the coach's other clients alone", async () => {
     await accounts.deleteAccount.run(asJordan);
 

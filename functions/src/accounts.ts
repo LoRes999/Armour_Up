@@ -199,6 +199,11 @@ export const deleteAccount = onCall(async (request) => {
 
   await db.recursiveDelete(db.doc(`users/${user.uid}`));
   await db.doc(`redeemAttempts/${user.uid}`).delete();
-  await auth.deleteUser(user.uid);
+  // Asked again after an attempt that already finished — its answer never
+  // reached the phone — the sign-in is already gone. That is the goal, not a
+  // failure: reporting it kept the app saying the account wasn't deleted.
+  await auth.deleteUser(user.uid).catch((error: { code?: string }) => {
+    if (error?.code !== 'auth/user-not-found') throw error;
+  });
   return { ok: true };
 });
