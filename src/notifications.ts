@@ -77,17 +77,6 @@ export async function registerForPush(
   return 'registered';
 }
 
-/** The token this phone registered, so signing out can remove it. */
-export async function currentPushToken(): Promise<string | null> {
-  const id = projectId();
-  if (!canUsePush() || !id) return null;
-  try {
-    return (await notifications().getExpoPushTokenAsync({ projectId: id })).data;
-  } catch {
-    return null;
-  }
-}
-
 const routeOf = (data: unknown): string | null => {
   const route = (data as { route?: unknown } | undefined)?.route;
   return typeof route === 'string' && route.startsWith('/') ? route : null;

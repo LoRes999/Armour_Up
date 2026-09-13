@@ -14,6 +14,7 @@ import { friendlyAuthError } from './authErrors';
 import { cloudConfig } from './config';
 import { firebase } from './firebase';
 import type { Client, WeightUnit } from './models';
+import { forgetPushToken, releasePushToken } from './pushTokens';
 import { DEFAULT_PREFS, type NotificationGroup, type NotificationPrefs, withDefaults } from './notificationPrefs';
 import { TRAINER_NAME } from './sampleData';
 import type { SyncScope } from './sync/types';
@@ -227,7 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await signInWithEmailAndPassword(firebase().auth, email.trim(), password);
         }),
 
-      signOut: () => friendly(() => firebaseSignOut(firebase().auth)),
+      signOut: async () => {
+        // Every Sign out button comes through here, so this phone's push token
+        // leaves the account whichever one was used.
+        if (uid) await releasePushToken(uid);
+        await friendly(() => firebaseSignOut(firebase().auth));
+      },
 
       resetPassword: (email) => friendly(() => sendPasswordResetEmail(firebase().auth, email.trim())),
 
@@ -269,6 +275,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       deleteAccount: async () => {
         await call('deleteAccount');
+        // The server removed this phone's token with the account.
+        await forgetPushToken();
         // The account is gone on the server; drop the local sign-in with it.
         await firebaseSignOut(firebase().auth).catch(() => undefined);
       },

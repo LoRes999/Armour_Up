@@ -14,8 +14,6 @@ import { DayTypeEditor } from './DayTypePicker';
 import { TRAINER_NAME } from '../sampleData';
 import { useAuth, useCoachName } from '../auth';
 import { NOTIFICATION_GROUPS, prefLabels } from '../notificationPrefs';
-import { currentPushToken } from '../notifications';
-import { removePushToken } from '../pushTokens';
 import type { SyncStatus } from '../sync/types';
 import { confirm, notify } from '../confirm';
 import { exportData } from '../exportData';
@@ -70,12 +68,8 @@ export default function SettingsScreen() {
   };
 
   const signOut = async () => {
-    if (cloud && auth.uid) {
-      // The next person on this phone shouldn't get this account's reminders.
-      const token = await currentPushToken();
-      if (token) await removePushToken(auth.uid, token);
-      await auth.signOut().catch(() => undefined);
-    }
+    // auth.signOut also takes this phone's push token off the account.
+    if (cloud && auth.uid) await auth.signOut().catch(() => undefined);
     store.signOut();
     router.replace('/');
   };
