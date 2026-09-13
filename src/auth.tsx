@@ -8,7 +8,14 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+  type DocumentReference,
+  type DocumentSnapshot,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { friendlyAuthError } from './authErrors';
 import { cloudConfig } from './config';
@@ -17,6 +24,7 @@ import type { Client, WeightUnit } from './models';
 import { forgetPushToken, releasePushToken } from './pushTokens';
 import { DEFAULT_PREFS, type NotificationGroup, type NotificationPrefs, withDefaults } from './notificationPrefs';
 import { TRAINER_NAME } from './sampleData';
+import { retryDelayMs } from './sync/engine';
 import type { SyncScope } from './sync/types';
 
 /**
@@ -135,6 +143,49 @@ async function rememberedClaims(uid: string): Promise<AccountClaims> {
   }
 }
 
+/**
+ * Listens to one document, starting again after a growing wait whenever the
+ * server stops the listener. The first error is usually a sign-in token a
+ * moment older than the role it needs, which the next attempt has; stopping
+ * for good left a new client without their coach's name all session.
+ */
+function watchDoc(
+  ref: DocumentReference,
+  onData: (snapshot: DocumentSnapshot) => void,
+  what: string
+): () => void {
+  let alive = true;
+  let stop: (() => void) | null = null;
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  let attempts = 0;
+
+  const start = () => {
+    retry = null;
+    stop = onSnapshot(
+      ref,
+      (snapshot) => {
+        attempts = 0;
+        onData(snapshot);
+      },
+      (error) => {
+        if (!alive || retry) return;
+        console.warn(`Stopped listening for ${what}; trying again.`, error);
+        stop?.();
+        stop = null;
+        attempts += 1;
+        retry = setTimeout(start, retryDelayMs(attempts));
+      }
+    );
+  };
+
+  start();
+  return () => {
+    alive = false;
+    if (retry) clearTimeout(retry);
+    stop?.();
+  };
+}
+
 async function call<T>(name: string, data?: unknown): Promise<T> {
   return friendly(async () => (await httpsCallable(firebase().functions, name)(data)).data as T);
 }
@@ -196,14 +247,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccount({ displayName: null, prefs: DEFAULT_PREFS });
       return;
     }
-    return onSnapshot(
+    return watchDoc(
       doc(firebase().db, 'users', uid),
       (snapshot) =>
         setAccount({
           displayName: (snapshot.get('displayName') as string | undefined) ?? null,
           prefs: withDefaults(snapshot.get('notificationPrefs')),
         }),
-      () => undefined
+      "this account's profile"
     );
   }, [uid, role]);
 
@@ -213,10 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCoachName(null);
       return;
     }
-    return onSnapshot(
+    return watchDoc(
       doc(firebase().db, 'trainers', trainerId),
       (snapshot) => setCoachName((snapshot.get('name') as string | undefined) ?? null),
-      () => undefined
+      "the coach's name"
     );
   }, [trainerId]);
 
