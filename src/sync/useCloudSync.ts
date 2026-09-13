@@ -10,6 +10,7 @@ import {
 import { AppState } from 'react-native';
 import type { Client, CustomMovement, DayType, Workout } from '../models';
 import type { SyncSnapshot } from '../persistence';
+import { SEED_DAY_TYPES } from '../sampleData';
 import { useCloud } from './context';
 import { planUploads } from './diff';
 import { flushOutbox, retryDelayMs } from './engine';
@@ -165,9 +166,14 @@ export function useCloudSync({
       shadowRef.current = current;
     } else if (sync.ownerUid === null && next.role === 'trainer') {
       // Data from before accounts belongs to the first coach who signs in on
-      // this phone. Comparing against nothing queues all of it for upload.
+      // this phone. Comparing against nothing queues all of it for upload —
+      // except the starter day types every install begins with, which the
+      // server already created with the account. Counting those as known means
+      // only a starter this phone actually changed goes up; sending them all
+      // put a coach's renamed day types back to "Push Day" on every device
+      // whenever they signed in on a new or reinstalled phone.
       syncRef.current = { ...sync, ownerUid: next.uid, lastSyncedAt: null };
-      shadowRef.current = EMPTY_DATA;
+      shadowRef.current = { ...EMPTY_DATA, dayTypes: SEED_DAY_TYPES };
     } else {
       // Another account's data, or a client's phone: start clean and let the
       // server fill it. This round stops here — comparing the old data against
