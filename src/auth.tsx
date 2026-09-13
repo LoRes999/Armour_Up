@@ -192,7 +192,20 @@ async function call<T>(name: string, data?: unknown): Promise<T> {
 
 /** Picks up a role a Cloud Function just set. onIdTokenChanged hears the new token. */
 async function refreshClaims(): Promise<void> {
-  await firebase().auth.currentUser?.getIdToken(true);
+  await friendly(async () => {
+    await firebase().auth.currentUser?.getIdToken(true);
+  });
+}
+
+/**
+ * Already signed in as this email: a sign-up that created the account and then
+ * stopped short of the next step. Trying again goes straight to that step —
+ * creating the account a second time only ever said "There is already an
+ * account with that email" to somebody who was signed in as it.
+ */
+function signedInAs(email: string): boolean {
+  const current = firebase().auth.currentUser?.email;
+  return Boolean(current) && current!.trim().toLowerCase() === email.trim().toLowerCase();
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -300,7 +313,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword: (email) => friendly(() => sendPasswordResetEmail(firebase().auth, email.trim())),
 
       signUpAsTrainer: async (name, email, password) => {
-        await friendly(() => createUserWithEmailAndPassword(firebase().auth, email.trim(), password));
+        if (!signedInAs(email)) {
+          await friendly(() => createUserWithEmailAndPassword(firebase().auth, email.trim(), password));
+        }
         await finishTrainerSetup(name);
       },
 
@@ -309,7 +324,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       previewInvite: (code) => call<InvitePreview>('previewInvite', { code }),
 
       joinWithCode: async ({ code, email, password, unit }) => {
-        await friendly(() => createUserWithEmailAndPassword(firebase().auth, email.trim(), password));
+        if (!signedInAs(email)) {
+          await friendly(() => createUserWithEmailAndPassword(firebase().auth, email.trim(), password));
+        }
         await call('redeemInvite', { code, unit, timezone: localTimeZone() });
         await refreshClaims();
       },
