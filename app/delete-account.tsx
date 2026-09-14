@@ -37,7 +37,7 @@ export default function DeleteAccount() {
   const deleted = isTrainer
     ? [
         'Every client on your roster',
-        'All programmes, logged sets and session notes',
+        'All programs, logged sets and session notes',
         'Your movement library and day types',
         'Your account and sign-in',
       ]

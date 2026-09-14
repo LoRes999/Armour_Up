@@ -73,7 +73,7 @@ export default function Paywall() {
             store.clients.length === 1
               ? 'Your client is safe'
               : `Your ${store.clients.length} clients are safe`,
-          detail: 'Every programme, session and personal record is exactly where you left it.',
+          detail: 'Every program, session and personal record is exactly where you left it.',
         },
         {
           icon: 'play-outline' as const,
@@ -89,7 +89,7 @@ export default function Paywall() {
         },
         {
           icon: 'barbell-outline' as const,
-          title: 'Programme and log in one place',
+          title: 'Program and log in one place',
           detail: 'Build the session, then log it set by set while they lift.',
         },
         {

@@ -102,7 +102,7 @@ export const MOVEMENT_LIBRARY: MovementInfo[] = [
   {
     name: 'Deadlift',
     description:
-      'A pull from the floor to a standing lockout. It trains the posterior chain against the heaviest loads of any lift, which makes it both the most productive and the most fatiguing movement in a programme.',
+      'A pull from the floor to a standing lockout. It trains the posterior chain against the heaviest loads of any lift, which makes it both the most productive and the most fatiguing movement in a program.',
     cues: [
       'Take the slack out of the bar before you pull',
       'Bar stays against the legs the entire way',
@@ -114,7 +114,7 @@ export const MOVEMENT_LIBRARY: MovementInfo[] = [
   {
     name: 'Barbell Row',
     description:
-      'A horizontal pull with the torso bent forward. It builds mid-back thickness and balances out the pressing volume of a push day, which is why most programmes match rows to presses.',
+      'A horizontal pull with the torso bent forward. It builds mid-back thickness and balances out the pressing volume of a push day, which is why most programs match rows to presses.',
     cues: [
       'Hinge to roughly 45 degrees and hold it',
       'Pull to the lower ribs, not the collarbone',

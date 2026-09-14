@@ -131,8 +131,8 @@ export default function InviteClient() {
             </View>
             <Text style={{ fontSize: 12, color: p.dim, lineHeight: 18 }}>
               {store.cloudActive
-                ? 'Send it however you like. They install the app, type the code, set a password, and land on your programme — free.'
-                : 'Send it however you like. They install the app, type the code, and land on your programme — free, and with no account to create.'}
+                ? 'Send it however you like. They install the app, type the code, set a password, and land on your program — free.'
+                : 'Send it however you like. They install the app, type the code, and land on your program — free, and with no account to create.'}
             </Text>
           </View>
 

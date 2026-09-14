@@ -97,7 +97,7 @@ export default function Roster() {
           <EmptyState
             icon="person-add-outline"
             title="No clients yet"
-            message="Invite someone and they get a six-character code. They join free, and their programme is waiting when they do."
+            message="Invite someone and they get a six-character code. They join free, and their program is waiting when they do."
           />
           <PrimaryButton
             title="Invite your first client"

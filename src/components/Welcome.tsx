@@ -42,7 +42,7 @@ export default function Welcome() {
           </View>
           <Title size={40}>{'Coach your\nwhole roster.'}</Title>
           <Text style={{ fontSize: 15, color: p.dim, lineHeight: 22 }}>
-            Programme every session, log it set by set, and watch the records stack up. Clients
+            Program every session, log it set by set, and watch the records stack up. Clients
             join free with a code you send them.
           </Text>
         </View>

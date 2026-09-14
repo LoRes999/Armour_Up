@@ -139,7 +139,7 @@ export default function Builder() {
   const confirmDelete = () =>
     confirm({
       title: 'Delete this workout?',
-      message: `${workout.name} will be removed from ${firstName}'s programme.`,
+      message: `${workout.name} will be removed from ${firstName}'s program.`,
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: () => {

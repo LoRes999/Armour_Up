@@ -294,7 +294,7 @@ export default function Join() {
               {[
                 {
                   icon: 'list-outline' as const,
-                  title: 'Your programme, written for you',
+                  title: 'Your program, written for you',
                   detail: 'See exactly what you are lifting each session, before you get there.',
                 },
                 {

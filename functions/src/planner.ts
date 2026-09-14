@@ -413,7 +413,7 @@ export function joinedMessage(input: { recipient: Recipient; client: Client; now
     kind: 'joined',
     group: 'activity',
     title: `${firstName(client.name)} joined`,
-    body: 'They used their code and can see their programme now.',
+    body: 'They used their code and can see their program now.',
     route: `/(trainer)/clients/${client.id}`,
     dedupeKey: `joined:${client.id}`,
   };

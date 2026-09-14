@@ -113,8 +113,8 @@ export default function SettingsScreen() {
       title: store.role === 'trainer' ? 'What clients can see' : `What ${coachName} can see`,
       message:
         store.role === 'trainer'
-          ? 'Clients see the sessions you programme for them, every set you log, your coach notes, and their own history and records. They cannot see other clients, your roster, or anything about your subscription.'
-          : `${coachName} sees the sessions they programme for you, the sets logged in them, and any session you repeat on your own. Your unit preference and appearance settings are yours alone.`,
+          ? 'Clients see the sessions you program for them, every set you log, your coach notes, and their own history and records. They cannot see other clients, your roster, or anything about your subscription.'
+          : `${coachName} sees the sessions they program for you, the sets logged in them, and any session you repeat on your own. Your unit preference and appearance settings are yours alone.`,
     });
 
   return (
