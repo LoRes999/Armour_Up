@@ -14,6 +14,7 @@ import {
   makeInviteCode,
   normaliseCode,
   parseWeightInput,
+  plural,
   schemeSummary,
   toCanonical,
   toDisplay,
@@ -169,6 +170,22 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// "1 sets", "1 exercises" and "Your 1 clients are safe" were on screen (C1).
+describe('plural', () => {
+  it('uses the singular for one', () => {
+    expect(plural(1, 'set')).toBe('1 set');
+  });
+
+  it('adds an s otherwise, zero included', () => {
+    expect(plural(0, 'set')).toBe('0 sets');
+    expect(plural(3, 'exercise')).toBe('3 exercises');
+  });
+
+  it('takes an irregular plural', () => {
+    expect(plural(2, 'person', 'people')).toBe('2 people');
+  });
+});
 
 // Replaces "Onboarding · week 1 of 4", which never moved (Ryan's call, 2026-09-13).
 describe('lastSessionLabel', () => {

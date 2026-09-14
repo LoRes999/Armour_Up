@@ -100,6 +100,10 @@ export function lastSessionLabel(iso: string | undefined, now: Date = new Date()
   return `Last session ${new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
 }
 
+/** "1 set", "3 sets". The same rule the server's notifications use. */
+export const plural = (count: number, one: string, many = `${one}s`) =>
+  `${count} ${count === 1 ? one : many}`;
+
 /**
  * What the trainer is paying for. The domain type lives here; the mechanism
  * that grants it lives in purchases.ts, so swapping the purchase backend never

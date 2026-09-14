@@ -69,7 +69,10 @@ export default function Paywall() {
     ? [
         {
           icon: 'people-outline' as const,
-          title: `Your ${store.clients.length} clients are safe`,
+          title:
+            store.clients.length === 1
+              ? 'Your client is safe'
+              : `Your ${store.clients.length} clients are safe`,
           detail: 'Every programme, session and personal record is exactly where you left it.',
         },
         {

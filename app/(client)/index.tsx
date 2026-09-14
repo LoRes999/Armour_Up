@@ -26,6 +26,7 @@ import {
   initialsOf,
   loggedSets,
   schemeSummary,
+  plural,
   topTargetWeight,
   totalSets,
   workoutProgress,
@@ -152,9 +153,7 @@ export default function ClientToday() {
                 {w.name}
               </Text>
               <Text style={{ fontSize: 12, color: p.dim, marginTop: 3 }}>
-                {`${relativeDay(w.date, new Date())} · ${w.exercises.length} ${
-                  w.exercises.length === 1 ? 'exercise' : 'exercises'
-                }`}
+                {`${relativeDay(w.date, new Date())} · ${plural(w.exercises.length, 'exercise')}`}
               </Text>
             </View>
             <Pressable
@@ -196,7 +195,7 @@ export default function ClientToday() {
                   {solo.name}
                 </Text>
                 <Text style={{ fontSize: 12, color: p.dim, marginTop: 3 }}>
-                  {`${loggedSets(solo)} of ${totalSets(solo)} sets logged · tap to carry on`}
+                  {`${loggedSets(solo)} of ${plural(totalSets(solo), 'set')} logged · tap to carry on`}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={p.dim} />
@@ -261,7 +260,7 @@ export default function ClientToday() {
                   {workout.name}
                 </Text>
                 <Text style={{ fontSize: 12, color: p.dim, marginTop: 3 }}>
-                  {`${completedExercises(workout)} of ${workout.exercises.length} done · ${totalSets(workout)} sets`}
+                  {`${completedExercises(workout)} of ${workout.exercises.length} done · ${plural(totalSets(workout), 'set')}`}
                 </Text>
                 {/* Otherwise an untouched session is an empty ring with nothing
                     to tap, which reads as broken rather than as not-started. */}

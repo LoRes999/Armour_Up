@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { Card, EmptyState, Numeric, Title } from '../../src/components/ui';
-import { totalSets } from '../../src/models';
+import { plural, totalSets } from '../../src/models';
 import { SyncPill } from '../../src/components/SyncPill';
 
 export default function TrainerToday() {
@@ -72,7 +72,7 @@ export default function TrainerToday() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: p.text }}>{client.name}</Text>
                 <Text style={{ fontSize: 12, color: p.dim, marginTop: 2 }}>
-                  {`${workout.name} · ${totalSets(workout)} sets`}
+                  {`${workout.name} · ${plural(totalSets(workout), 'set')}`}
                 </Text>
               </View>
 

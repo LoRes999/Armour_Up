@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { usePalette } from '../theme';
 import { Card, Eyebrow, Pill, PrimaryButton, StatTile } from '../components/ui';
-import { WeightUnit, formatWeight, toDisplay } from '../models';
+import { WeightUnit, formatWeight, plural, toDisplay } from '../models';
 import { SessionReward, ordinal, relativeDay, trainerHeadline } from '../rewards';
 import { HapticKind, playHaptic } from '../haptics';
 import { Confetti, ConfettiSize } from './Confetti';
@@ -176,7 +176,7 @@ function describe(event: CelebrationEvent, accent: string, success: string): Con
   const first = event.clientName.split(' ')[0];
 
   if (event.kind === 'assigned') {
-    const exercises = `${event.exerciseCount} ${event.exerciseCount === 1 ? 'exercise' : 'exercises'}`;
+    const exercises = plural(event.exerciseCount, 'exercise');
     return {
       icon: 'paper-plane',
       iconColor: accent,

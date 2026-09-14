@@ -22,6 +22,7 @@ import {
   initialsOf,
   lastSessionLabel,
   loggedSets,
+  plural,
   totalSets,
 } from '../../../src/models';
 import { confirm, notify } from '../../../src/confirm';
@@ -204,9 +205,10 @@ export default function ClientDetail() {
               >
                 <Row
                   title={workout.name}
-                  subtitle={`${isMissedSession(workout) ? 'Missed · ' : ''}${relativeDay(workout.date)} · ${workout.exercises.length} ${
-                    workout.exercises.length === 1 ? 'exercise' : 'exercises'
-                  } · ${totalSets(workout)} ${totalSets(workout) === 1 ? 'set' : 'sets'}`}
+                  subtitle={`${isMissedSession(workout) ? 'Missed · ' : ''}${relativeDay(workout.date)} · ${plural(
+                    workout.exercises.length,
+                    'exercise'
+                  )} · ${plural(totalSets(workout), 'set')}`}
                   value={new Date(workout.date).toLocaleTimeString(undefined, {
                     hour: 'numeric',
                     minute: '2-digit',
@@ -241,7 +243,7 @@ export default function ClientDetail() {
                   >
                     <Row
                       title={workout.name}
-                      subtitle={`${new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${loggedSets(workout)} sets · ${workout.durationMinutes ?? 0} min`}
+                      subtitle={`${new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${plural(loggedSets(workout), 'set')} · ${workout.durationMinutes ?? 0} min`}
                       value={String(loggedSets(workout))}
                       unit="SETS"
                       badge={isSolo(workout) ? 'SOLO' : undefined}

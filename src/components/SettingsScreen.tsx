@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Appearance, useStore } from '../store';
 import { metrics, tagColor, usePalette } from '../theme';
 import { Avatar, Card, Eyebrow, SegmentedPicker, Title } from './ui';
-import { DayType, UNITS, WeightUnit, initialsOf, unitName } from '../models';
+import { DayType, UNITS, WeightUnit, initialsOf, plural, unitName } from '../models';
 import { DayTypeEditor } from './DayTypePicker';
 import { TRAINER_NAME } from '../sampleData';
 import { useAuth, useCoachName } from '../auth';
@@ -146,7 +146,7 @@ export default function SettingsScreen() {
             {cloud && auth.email
               ? auth.email
               : store.role === 'trainer'
-                ? `${store.clients.length} clients`
+                ? plural(store.clients.length, 'client')
                 : `Coached by ${coachName}`}
           </Text>
         </View>

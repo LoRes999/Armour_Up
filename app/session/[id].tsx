@@ -27,6 +27,7 @@ import {
   formatIn,
   loggedCount,
   loggedSets,
+  plural,
   schemeSummary,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
@@ -321,7 +322,7 @@ export default function LiveSession() {
             <LiveText
               style={{ fontSize: 13, color: p.dim }}
               render={() =>
-                `${loggedSets(workout)} sets · ${workout.exercises.length} exercises · ${clockString(
+                `${plural(loggedSets(workout), 'set')} · ${plural(workout.exercises.length, 'exercise')} · ${clockString(
                   elapsedSeconds(startedAt)
                 )}`
               }
