@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -71,6 +71,16 @@ function Root() {
           headerStyle: { backgroundColor: palette.background },
           headerTitleStyle: { color: palette.text, fontWeight: '700' },
           headerTintColor: palette.accent,
+          // The web header put custom buttons flush to the screen edge (Cancel
+          // at x=0); iOS insets them itself. The web header takes container
+          // styles that the native-stack option types don't list, and passes
+          // them through, hence the cast.
+          ...(Platform.OS === 'web'
+            ? ({
+                headerLeftContainerStyle: { paddingLeft: 16 },
+                headerRightContainerStyle: { paddingRight: 16 },
+              } as object)
+            : null),
         }}
       >
         <Stack.Screen name="index" />
