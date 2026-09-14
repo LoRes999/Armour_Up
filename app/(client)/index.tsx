@@ -51,7 +51,8 @@ export default function ClientToday() {
   const [open, setOpen] = useState<string | null>(null);
 
   const client = store.currentClient();
-  const workout = client ? store.todayWorkoutFor(client.id) : undefined;
+  // Only what the coach has sent; a draft they are still building stays theirs.
+  const workout = client ? store.sentWorkoutFor(client.id) : undefined;
   const solo = client ? store.activeSoloFor(client.id) : undefined;
   const lastSession = client ? store.historyFor(client.id)[0] : undefined;
   const unit = client?.unit ?? DEFAULT_UNIT;

@@ -63,6 +63,59 @@ const completedSession = async (
   return id;
 };
 
+/**
+ * What shows as today's session. Tapping "New workout" used to put an empty
+ * draft on the coach's Today and the client's Today straight away, before
+ * anything was in it or it had been sent. As Ryan decided (2026-09-13): the
+ * coach sees any of today's sessions that has exercises, since they may run it
+ * live without sending it; the client sees only what their coach has sent.
+ */
+describe("today's session", () => {
+  it('leaves an empty draft off both Today screens', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    await act(() => {
+      result.current.createWorkout(clientId);
+    });
+
+    expect(result.current.todayWorkoutFor(clientId)).toBeUndefined();
+    expect(result.current.clientsWithSessionToday()).toHaveLength(0);
+    expect(result.current.sentWorkoutFor(clientId)).toBeUndefined();
+  });
+
+  it("shows a built session to the coach, and to the client only once it's sent", async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+
+    expect(result.current.todayWorkoutFor(clientId)?.id).toBe(workoutId);
+    expect(result.current.clientsWithSessionToday().map((c) => c.id)).toEqual([clientId]);
+    expect(result.current.sentWorkoutFor(clientId)).toBeUndefined();
+
+    await act(() => {
+      result.current.assignWorkout(workoutId);
+    });
+
+    expect(result.current.sentWorkoutFor(clientId)?.id).toBe(workoutId);
+  });
+
+  it("keeps the sample client's session on their Today", async () => {
+    const { result } = await mount();
+    await act(() => {
+      result.current.loadSampleData();
+    });
+    const marcus = result.current.clients.find((c) => c.name === 'Marcus Webb');
+
+    expect(marcus && result.current.sentWorkoutFor(marcus.id)?.name).toBe('Push Day A');
+  });
+});
+
 describe('a fresh store', () => {
   it('starts with no clients and no workouts', async () => {
     const { result } = await mount();

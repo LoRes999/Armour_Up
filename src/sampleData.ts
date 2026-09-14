@@ -196,8 +196,18 @@ export function buildSeed(): { clients: Client[]; workouts: Workout[]; dayTypes:
 
   // Everything seeded is trainer-led unless it says otherwise, so the required
   // loggedBy field does not have to be repeated at thirteen call sites.
+  // Trainer-led sessions count as sent and already seen: the client's Today
+  // shows only what the coach has sent, and a "new from your coach" card on
+  // every upcoming session is not the demo anybody expects.
+  const sentLongAgo = daysAgo(120);
   const push = (workout: Omit<Workout, 'loggedBy'> & { loggedBy?: Workout['loggedBy'] }) =>
-    workouts.push({ loggedBy: 'trainer', ...workout });
+    workouts.push({
+      loggedBy: 'trainer',
+      ...((workout.loggedBy ?? 'trainer') === 'trainer'
+        ? { assignedAt: sentLongAgo, seenByClientAt: sentLongAgo }
+        : {}),
+      ...workout,
+    });
 
   // 13 weeks of history for Marcus, Mon / Wed / Fri / Sat.
   for (let back = 91; back >= 1; back -= 1) {

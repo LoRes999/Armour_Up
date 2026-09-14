@@ -95,6 +95,8 @@ interface StoreValue {
   upcomingFor: (clientId: string) => Workout[];
   historyFor: (clientId: string) => Workout[];
   todayWorkoutFor: (clientId: string) => Workout | undefined;
+  /** Today's session as the client sees it: only one their coach has sent. */
+  sentWorkoutFor: (clientId: string) => Workout | undefined;
   clientsWithSessionToday: () => Client[];
   lapsedClients: () => Client[];
   dayType: (id?: string) => DayType | undefined;
@@ -189,6 +191,10 @@ const isToday = (iso: string) => startOfDay(iso) === startOfDay(new Date());
  * objects, so logging a set updates the client's Today screen live.
  * In-memory only: nothing survives a reload.
  */
+/** A session the coach runs today that has something in it. */
+const isTodaysSession = (w: Workout) =>
+  w.loggedBy === 'trainer' && w.status !== 'completed' && isToday(w.date) && w.exercises.length > 0;
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   // A fresh install starts empty. Seeding six invented clients unconditionally
   // meant a trainer who had just paid landed on somebody else's roster, with
@@ -439,17 +445,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       // Trainer-led and dated today. Solo sessions have their own card, and an
       // unfinished session from three weeks ago is not "today".
-      todayWorkoutFor: (clientId) =>
-        workoutsFor(clientId).find(
-          (w) => w.loggedBy === 'trainer' && w.status !== 'completed' && isToday(w.date)
-        ),
+      // The coach's view of today: any session they have built for today, sent
+      // or not, since a coach may run one live without sending it. An empty
+      // "New workout" draft is not a session yet. (Ryan's call, 2026-09-13.)
+      todayWorkoutFor: (clientId) => workoutsFor(clientId).find(isTodaysSession),
 
-      clientsWithSessionToday: () =>
-        clients.filter((c) =>
-          workoutsFor(c.id).some(
-            (w) => isToday(w.date) && w.status !== 'completed' && w.loggedBy === 'trainer'
-          )
-        ),
+      // The client's view of today: only what their coach has sent.
+      sentWorkoutFor: (clientId) =>
+        workoutsFor(clientId).find((w) => isTodaysSession(w) && w.assignedAt !== undefined),
+
+      clientsWithSessionToday: () => clients.filter((c) => workoutsFor(c.id).some(isTodaysSession)),
 
       dayType: (id) => (id ? dayTypes.find((d) => d.id === id) : undefined),
 
