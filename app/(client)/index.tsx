@@ -271,7 +271,7 @@ export default function ClientToday() {
               </View>
             </Card>
 
-            {workout.coachNote ? (
+            {workout.coachNote.trim() ? (
               <View
                 style={{
                   flexDirection: 'row',

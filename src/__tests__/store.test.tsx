@@ -542,6 +542,23 @@ describe('repeating a session', () => {
 // Renaming used to leave old sessions on the old name, splitting one lift's
 // records and chart in two. A rename carries history along (Ryan's call,
 // 2026-09-13).
+// Clients see a note from their coach on a workout, but nothing could write
+// one. The builder gets a note box (Ryan's call, 2026-09-13).
+describe('the coach note', () => {
+  it('is written on the workout', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.setCoachNote(workoutId, 'Pause every rep.');
+    });
+    expect(result.current.workout(workoutId)?.coachNote).toBe('Pause every rep.');
+  });
+});
+
 describe('renaming a custom movement', () => {
   it('moves past sessions, records and the chart to the new name', async () => {
     const { result } = await mount();

@@ -160,7 +160,7 @@ export default function SessionDetail({
         );
       })}
 
-      {workout.coachNote ? (
+      {workout.coachNote.trim() ? (
         <View
           style={{
             flexDirection: 'row',

@@ -114,6 +114,7 @@ interface StoreValue {
   // mutations
   createWorkout: (clientId: string) => string;
   renameWorkout: (workoutId: string, name: string) => void;
+  setCoachNote: (workoutId: string, note: string) => void;
   setWorkoutDate: (workoutId: string, iso: string) => void;
   setTargetWeight: (workoutId: string, exercise: number, set: number, weight: number) => void;
   setTargetReps: (workoutId: string, exercise: number, set: number, reps: number) => void;
@@ -545,6 +546,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       renameWorkout: (workoutId, name) => mutate(workoutId, (w) => { w.name = name; }),
+      setCoachNote: (workoutId, note) => mutate(workoutId, (w) => { w.coachNote = note; }),
       setWorkoutDate: (workoutId, iso) => mutate(workoutId, (w) => { w.date = iso; }),
 
       setTargetWeight: (workoutId, exercise, set, weight) =>

@@ -201,6 +201,29 @@ export default function Builder() {
           {client?.name ?? 'Client'}
         </Text>
 
+        {/* Clients see this on the workout, but nothing could write one before
+            (Ryan's call, 2026-09-13). */}
+        <TextInput
+          value={workout.coachNote}
+          onChangeText={(text) => store.setCoachNote(workout.id, text)}
+          placeholder={`Note for ${client?.name.split(' ')[0] ?? 'your client'}`}
+          placeholderTextColor={p.dim}
+          multiline
+          maxLength={500}
+          accessibilityLabel="Note for your client"
+          style={{
+            minHeight: 64,
+            paddingHorizontal: 13,
+            paddingVertical: 11,
+            borderRadius: metrics.controlRadius,
+            backgroundColor: p.surfaceAlt,
+            color: p.text,
+            fontSize: 14,
+            lineHeight: 20,
+            textAlignVertical: 'top',
+          }}
+        />
+
         {/* The date was static text and createWorkout always stamped "now", so
             every session a trainer built landed on today and there was no way
             to programme next Tuesday. setWorkoutDate existed with no callers. */}
