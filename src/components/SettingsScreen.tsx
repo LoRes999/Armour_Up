@@ -327,7 +327,9 @@ export default function SettingsScreen() {
       {/* A fresh install is empty, which is correct but leaves nothing to look
           at — and no invite code, so the client side is unreachable. This is
           how a reviewer populates the app, and how it gets emptied again. */}
-      {store.role === 'trainer' ? (
+      {/* Not with accounts on: it adds six phone-only demo clients to a real
+          roster, and a reviewer signs in to a demo account instead (F12). */}
+      {store.role === 'trainer' && !store.cloudActive ? (
         <Section title="SAMPLE DATA">
           <Card radius={15}>
             <Pressable
