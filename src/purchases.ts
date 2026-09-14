@@ -59,7 +59,8 @@ export const PLANS: Plan[] = [
     title: 'Monthly',
     priceLabel: '$29',
     periodLabel: 'per month',
-    footnote: 'Cancel any time in Settings.',
+    // Where to cancel is in the small print under the button, per platform.
+    footnote: 'Cancel any time.',
   },
 ];
 

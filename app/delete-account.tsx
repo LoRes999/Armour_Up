@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useAuth, useCoachName } from '../src/auth';
 import { confirm, notify } from '../src/confirm';
 import { clearPhotos } from '../src/photoStorage';
 import { useClose } from '../src/useClose';
+import { storeWording } from '../src/storeWording';
 
 const PHRASE = 'DELETE';
 
@@ -99,7 +100,7 @@ export default function DeleteAccount() {
 
         <Text style={{ fontSize: 14, color: p.dim, lineHeight: 21, marginTop: -8 }}>
           {isTrainer
-            ? `You cannot undo this. Your clients' accounts are deleted too, along with their programs and history. Cancel your subscription separately in the App Store.`
+            ? `You cannot undo this. Your clients' accounts are deleted too, along with their programs and history. Cancel your subscription separately in ${storeWording(Platform.OS).cancelWhere}.`
             : `You cannot undo this. ${coachName} will be notified that you have left.`}
         </Text>
 

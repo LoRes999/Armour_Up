@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { notify } from '../confirm';
 import { openHosted } from '../legal';
 import { useAuth } from '../auth';
 import type { LegalDocId } from '../legalContent';
+import { storeWording } from '../storeWording';
 
 /**
  * Screen one. Trainers pay for the app; clients are free and arrive through an
@@ -37,6 +38,8 @@ export default function Paywall() {
   // Owns it, but is not signed in — signOut clears the role and keeps the sub.
   const owned = store.subscription?.status === 'active';
   const pending = store.purchasePending;
+  const wording = storeWording(Platform.OS);
+  const selected = PLANS.find((option) => option.id === plan) ?? PLANS[0];
 
   // No navigation on success in either of these: the root gate re-renders and
   // redirects itself. Both sign in as a trainer, because a client never buys —
@@ -230,11 +233,34 @@ export default function Paywall() {
               gap: 8,
             }}
           >
-            <Ionicons name="logo-apple" size={19} color={p.background} />
+            {wording.logo ? <Ionicons name={wording.logo} size={19} color={p.background} /> : null}
             <Text style={{ fontSize: 16, fontWeight: '600', color: p.background }}>
-              {pending ? 'One moment…' : 'Subscribe with Apple'}
+              {pending ? 'One moment…' : wording.subscribeLabel}
             </Text>
           </Pressable>
+
+          {/* Price, length and renewal terms beside the button, as Apple 3.1.2
+              asks, naming the store this phone bills through (Ryan's call,
+              2026-09-13). The links were flat text once; they open now. */}
+          <Text style={{ fontSize: 11, color: p.dim, textAlign: 'center', lineHeight: 17 }}>
+            {`${selected.priceLabel} ${selected.periodLabel}, billed through ${wording.store}. Renews automatically until you cancel in ${wording.cancelWhere}. By continuing you agree to our `}
+            <Text
+              onPress={() => openLegal('terms')}
+              accessibilityRole="link"
+              style={{ color: p.accent, fontWeight: '700' }}
+            >
+              Terms of Service
+            </Text>
+            {' and '}
+            <Text
+              onPress={() => openLegal('privacy')}
+              accessibilityRole="link"
+              style={{ color: p.accent, fontWeight: '700' }}
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
 
           {/* This slot used to read "Continue with email" and was wired to the
               same `buy` handler as the Apple button above, so the least
@@ -308,28 +334,6 @@ export default function Paywall() {
           </Pressable>
         ) : null}
 
-        {/* Apple requires these to be reachable next to a subscription price.
-            They were flat text until now — the words were there and nothing
-            happened when you pressed them. */}
-        <Text style={{ fontSize: 11, color: p.dim, textAlign: 'center', lineHeight: 17 }}>
-          Billed through the App Store and renews until cancelled. By continuing you agree to our{' '}
-          <Text
-            onPress={() => openLegal('terms')}
-            accessibilityRole="link"
-            style={{ color: p.accent, fontWeight: '700' }}
-          >
-            Terms of Service
-          </Text>
-          {' and '}
-          <Text
-            onPress={() => openLegal('privacy')}
-            accessibilityRole="link"
-            style={{ color: p.accent, fontWeight: '700' }}
-          >
-            Privacy Policy
-          </Text>
-          .
-        </Text>
       </ScrollView>
     </SafeAreaView>
   );
