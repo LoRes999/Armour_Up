@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../../src/store';
-import { metrics, usePalette } from '../../src/theme';
+import { metrics, usePalette, webHitArea } from '../../src/theme';
 import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/components/ui';
 import { confirm, notify } from '../../src/confirm';
 import { useConfirmDiscard } from '../../src/useConfirmDiscard';
@@ -171,7 +171,7 @@ export default function CustomMovementForm() {
         options={{
           title: existing ? 'Edit movement' : 'New movement',
           headerLeft: () => (
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button" style={webHitArea}>
               <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           ),

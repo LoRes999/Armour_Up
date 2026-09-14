@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../../src/store';
-import { usePalette } from '../../../src/theme';
+import { usePalette, webHitArea } from '../../../src/theme';
 import { PrimaryButton } from '../../../src/components/ui';
 import SessionDetail from '../../../src/components/SessionDetail';
 import { confirm } from '../../../src/confirm';
@@ -59,6 +59,7 @@ export default function WorkoutDetail() {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Back to calendar"
+          style={webHitArea}
         >
           <Ionicons name="chevron-back" size={26} color={p.accent} />
         </Pressable>

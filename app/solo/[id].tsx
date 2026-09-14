@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
-import { metrics, usePalette } from '../../src/theme';
+import { metrics, usePalette, webHitArea } from '../../src/theme';
 import {
   Card,
   EmptyState,
@@ -80,6 +80,7 @@ export default function SoloSession() {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Close session"
+          style={webHitArea}
         >
           <Ionicons name="close" size={24} color={p.dim} />
         </Pressable>
@@ -93,6 +94,7 @@ export default function SoloSession() {
               accessibilityRole="button"
               accessibilityLabel="Finish session"
               accessibilityState={{ disabled: !canFinish }}
+              style={webHitArea}
             >
               <Ionicons name="flag-outline" size={22} color={canFinish ? p.accent : p.dim} />
             </Pressable>

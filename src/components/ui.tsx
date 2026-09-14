@@ -518,6 +518,18 @@ export function WeightStepper({
   );
 }
 
+const stepperButton = {
+  width: 28,
+  height: metrics.hitTarget,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
+// hitSlop is ignored on the web, where these were 28px targets. A full-width
+// target pulled in by negative margins takes the same 28px of layout.
+const webStepperButton =
+  Platform.OS === 'web' ? { width: metrics.hitTarget, marginHorizontal: -8 } : undefined;
+
 export function RepStepper({ value, onChange }: { value: number; onChange: (next: number) => void }) {
   const p = usePalette();
   return (
@@ -529,7 +541,7 @@ export function RepStepper({ value, onChange }: { value: number; onChange: (next
         hitSlop={{ left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityLabel="One rep fewer"
-        style={{ width: 28, height: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+        style={[stepperButton, webStepperButton]}
       >
         <Ionicons name="remove" size={15} color={p.dim} />
       </Pressable>
@@ -538,7 +550,7 @@ export function RepStepper({ value, onChange }: { value: number; onChange: (next
         hitSlop={{ left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityLabel="One rep more"
-        style={{ width: 28, height: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+        style={[stepperButton, webStepperButton]}
       >
         <Ionicons name="add" size={15} color={p.accent} />
       </Pressable>

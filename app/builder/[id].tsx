@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
-import { metrics, usePalette } from '../../src/theme';
+import { metrics, usePalette, webHitArea } from '../../src/theme';
 import {
   Card,
   DashedButton,
@@ -77,7 +77,7 @@ export default function Builder() {
             headerShown: true,
             title: 'Workout builder',
             headerLeft: () => (
-              <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+              <Pressable onPress={close} hitSlop={8} accessibilityRole="button" style={webHitArea}>
                 <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
               </Pressable>
             ),
@@ -177,12 +177,13 @@ export default function Builder() {
               }
               hitSlop={8}
               accessibilityRole="button"
+              style={webHitArea}
             >
               <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={() => leave(close)} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={() => leave(close)} hitSlop={8} accessibilityRole="button" style={webHitArea}>
               <Text style={{ color: p.accent, fontSize: 16, fontWeight: '700' }}>Save</Text>
             </Pressable>
           ),

@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { useStore } from './store';
 
 /**
@@ -77,6 +77,20 @@ export const metrics = {
   hitTarget: 44,
   screenPadding: 20,
 };
+
+/**
+ * hitSlop does nothing on the web, so a small control there gets a real
+ * hit-target box instead. Phones keep their tighter layout and their hitSlop.
+ */
+export const webHitArea =
+  Platform.OS === 'web'
+    ? {
+        minWidth: metrics.hitTarget,
+        minHeight: metrics.hitTarget,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+      }
+    : undefined;
 
 /** Resolves the appearance override against the OS setting. */
 export function usePalette(): Palette {

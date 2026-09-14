@@ -5,7 +5,7 @@ import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
-import { metrics, usePalette } from '../src/theme';
+import { metrics, usePalette, webHitArea } from '../src/theme';
 import { Card, Eyebrow, PrimaryButton, SegmentedPicker, Title, keyboardAware } from '../src/components/ui';
 import {
   Client,
@@ -82,6 +82,7 @@ export default function InviteClient() {
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Close"
+              style={webHitArea}
             >
               <Text style={{ color: p.accent, fontSize: 16 }}>{invited ? 'Done' : 'Cancel'}</Text>
             </Pressable>

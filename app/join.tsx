@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../src/store';
-import { metrics, usePalette } from '../src/theme';
+import { metrics, usePalette, webHitArea } from '../src/theme';
 import { Avatar, Card, Eyebrow, PrimaryButton, SegmentedPicker, Title, keyboardAware } from '../src/components/ui';
 import {
   CODE_LENGTH,
@@ -152,11 +152,11 @@ export default function Join() {
         title: '',
         headerLeft: () =>
           step === 'account' ? (
-            <Pressable onPress={() => setStep('invitation')} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={() => setStep('invitation')} hitSlop={8} accessibilityRole="button" style={webHitArea}>
               <Text style={{ color: p.accent, fontSize: 16 }}>Back</Text>
             </Pressable>
           ) : (
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button" style={webHitArea}>
               <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
             </Pressable>
           ),
