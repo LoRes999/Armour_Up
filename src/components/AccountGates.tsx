@@ -43,6 +43,15 @@ export function FinishSetup() {
           >
             <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Sign out</Text>
           </Pressable>
+          {/* Account deletion must be reachable in every signed-in state
+              (App Store 5.1.1(v); F10). */}
+          <Pressable
+            onPress={() => router.push('/delete-account')}
+            accessibilityRole="button"
+            style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Delete account</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -55,6 +64,7 @@ export function FinishSetup() {
  */
 export function PreparingProgramme() {
   const p = usePalette();
+  const router = useRouter();
   const auth = useAuth();
   const { syncStatus } = useStore();
   return (
@@ -78,6 +88,13 @@ export function PreparingProgramme() {
         style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
       >
         <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Sign out</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => router.push('/delete-account')}
+        accessibilityRole="button"
+        style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Delete account</Text>
       </Pressable>
     </SafeAreaView>
   );

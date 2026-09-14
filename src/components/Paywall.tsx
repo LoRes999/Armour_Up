@@ -313,22 +313,26 @@ export default function Paywall() {
             button above now does exactly that, and always renders — which is
             also what un-strands a lapsed trainer who signs out, since the link
             used to be replaced by Sign out and /join became unreachable. */}
-        {signedInCoach ? (
-          <Pressable
-            onPress={() => void auth.signOut()}
-            accessibilityRole="button"
-            style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Sign out</Text>
-          </Pressable>
-        ) : lapsed ? (
-          <Pressable
-            onPress={() => store.signOut()}
-            accessibilityRole="button"
-            style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Sign out</Text>
-          </Pressable>
+        {signedInCoach || lapsed ? (
+          <>
+            <Pressable
+              onPress={() => (signedInCoach ? void auth.signOut() : store.signOut())}
+              accessibilityRole="button"
+              style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Sign out</Text>
+            </Pressable>
+            {/* A coach who never subscribed, or whose subscription ended, could
+                only sign out: account deletion has to be reachable from inside
+                the app in every signed-in state (App Store 5.1.1(v); F10). */}
+            <Pressable
+              onPress={() => router.push('/delete-account')}
+              accessibilityRole="button"
+              style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Delete account</Text>
+            </Pressable>
+          </>
         ) : owned ? (
           // Signing out clears the role but keeps the subscription, so a paying
           // trainer was shown the whole acquisition pitch again with no way back
