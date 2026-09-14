@@ -147,7 +147,7 @@ export default function LiveSession() {
         <EmptyState
           icon="barbell-outline"
           title="Session not found"
-          message="This workout is no longer scheduled."
+          message="This session is no longer scheduled."
         />
       </>
     );

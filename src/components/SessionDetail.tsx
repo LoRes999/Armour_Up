@@ -50,7 +50,7 @@ export default function SessionDetail({
       <EmptyState
         icon="document-outline"
         title="Session not found"
-        message="This workout is no longer available."
+        message="This session is no longer available."
       />
     );
   }

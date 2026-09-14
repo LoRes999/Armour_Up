@@ -178,7 +178,7 @@ export default function ClientDetail() {
             <EmptyState
               icon="calendar-outline"
               title="Nothing scheduled"
-              message="Build their next session below."
+              message="Build their next workout below."
             />
           ) : (
             store.upcomingFor(client.id).map((workout) => (

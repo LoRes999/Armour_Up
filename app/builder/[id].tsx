@@ -75,7 +75,7 @@ export default function Builder() {
         <Stack.Screen
           options={{
             headerShown: true,
-            title: 'Workout Builder',
+            title: 'Workout builder',
             headerLeft: () => (
               <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
                 <Text style={{ color: p.accent, fontSize: 16 }}>Close</Text>
@@ -166,7 +166,7 @@ export default function Builder() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'Workout Builder',
+          title: 'Workout builder',
           headerLeft: () => (
             <Pressable
               onPress={() =>

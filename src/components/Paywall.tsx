@@ -80,7 +80,7 @@ export default function Paywall() {
         },
         {
           icon: 'play-outline' as const,
-          title: 'Pick up mid-block',
+          title: 'Pick up where you left off',
           detail: 'Resubscribe and your roster is back the moment the purchase clears.',
         },
       ]
@@ -88,12 +88,12 @@ export default function Paywall() {
         {
           icon: 'people-outline' as const,
           title: 'Unlimited clients',
-          detail: 'Invite anyone with a code. They never pay a penny.',
+          detail: 'Invite anyone with a code. Clients never pay.',
         },
         {
           icon: 'barbell-outline' as const,
           title: 'Program and log in one place',
-          detail: 'Build the session, then log it set by set while they lift.',
+          detail: 'Build the workout, then log it set by set while they lift.',
         },
         {
           icon: 'trending-up-outline' as const,
