@@ -8,7 +8,7 @@ import { EmptyState, PrimaryButton } from '../src/components/ui';
 /**
  * Without this, a mistyped path renders nothing at all — which matters more
  * than usual here, because the app is reviewed in a browser where the URL bar
- * is right there and the `strengthcoach://` scheme has no handler either.
+ * is right there and the `armourup://` scheme has no handler either.
  */
 export default function NotFound() {
   const p = usePalette();

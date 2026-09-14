@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Strength Coach",
+    "name": "ArmourUp",
     "slug": "strength-coach",
     "owner": "henryarmour1",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "strengthcoach",
+    "scheme": "armourup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.ryanarmour.strengthcoach",
+      "bundleIdentifier": "com.ryanarmour.armourup",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -26,12 +26,12 @@
       }
     },
     "android": {
-      "package": "com.ryanarmour.strengthcoach",
+      "package": "com.ryanarmour.armourup",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#171214"
+        "backgroundColor": "#111111"
       }
     },
     "web": {
