@@ -264,9 +264,11 @@ export function workoutProgress(workout: Workout): number {
 
 export function initialsOf(name: string): string {
   return name
-    .split(' ')
+    .trim()
+    .split(/\s+/)
     .slice(0, 2)
-    .map((part) => part[0] ?? '')
+    // Array.from walks whole characters: part[0] is half of an emoji.
+    .map((part) => Array.from(part)[0] ?? '')
     .join('')
     .toUpperCase();
 }

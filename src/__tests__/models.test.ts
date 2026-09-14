@@ -8,6 +8,7 @@ import {
   Workout,
   formatIn,
   formatWeight,
+  initialsOf,
   loggedSets,
   makeInviteCode,
   normaliseCode,
@@ -166,6 +167,18 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// An emoji is two UTF-16 units; taking the first alone put a broken
+// character in the avatar.
+describe('initialsOf', () => {
+  it('keeps an emoji whole', () => {
+    expect(initialsOf('🔥 Sam Lee')).toBe('🔥S');
+  });
+
+  it('ignores extra spaces', () => {
+    expect(initialsOf('  Sam   Lee ')).toBe('SL');
+  });
+});
 
 // The chart's screen-reader summary said "rising to" whatever the trend did.
 describe('trendVerb', () => {
