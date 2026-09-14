@@ -1,4 +1,5 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { createHash } from 'node:crypto';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/https';
 import { CODE_LENGTH, UNITS, type WeightUnit, normaliseCode } from '../../src/models';
 import { SEED_DAY_TYPES } from '../../src/sampleData';
@@ -51,6 +52,29 @@ export const createTrainerProfile = onCall(async (request) => {
 const RATE_WINDOW_MS = 60 * 60_000;
 const RATE_MAX = 10;
 
+/**
+ * Invite lookups allowed from one address per hour. The lookup needs no
+ * sign-in, so without a limit a script could try codes until one matched and
+ * read back a client's name and email. A person typing a code needs a
+ * handful; guessing one of 32^6 at this rate is hopeless.
+ */
+export const PREVIEW_LIMIT = 30;
+
+/** The caller's address, hashed: counted, never stored as it is. */
+function callerKey(request: { rawRequest?: { ip?: string; headers?: Record<string, unknown> } }): string {
+  // Behind Google's front end, the real address is the last one it appended.
+  const forwarded = request.rawRequest?.headers?.['x-forwarded-for'];
+  const chain =
+    typeof forwarded === 'string'
+      ? forwarded
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+      : [];
+  const address = chain[chain.length - 1] ?? request.rawRequest?.ip ?? 'unknown';
+  return createHash('sha256').update(address).digest('hex');
+}
+
 async function readInvite(rawCode: unknown) {
   const code = normaliseCode(typeof rawCode === 'string' ? rawCode : '');
   if (code.length !== CODE_LENGTH) {
@@ -70,6 +94,21 @@ async function readInvite(rawCode: unknown) {
  * after this. Returns only what that screen needs.
  */
 export const previewInvite = onCall(async (request) => {
+  // Counted before the code is even read: wrong guesses are what is limited.
+  const attempts = db.doc(`previewAttempts/${callerKey(request)}`);
+  await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(attempts);
+    const now = Date.now();
+    const windowStart = Number(snapshot.get('windowStart') ?? 0);
+    const count = now - windowStart > RATE_WINDOW_MS ? 0 : Number(snapshot.get('count') ?? 0);
+    if (count >= PREVIEW_LIMIT) {
+      throw new HttpsError('resource-exhausted', 'Too many tries. Wait an hour, or ask your coach for the code again.');
+    }
+    const start = count === 0 ? now : windowStart;
+    // expireAt lets a TTL policy clear the count once its hour is up.
+    tx.set(attempts, { windowStart: start, count: count + 1, expireAt: Timestamp.fromMillis(start + RATE_WINDOW_MS) });
+  });
+
   const { trainerId, clientId } = await readInvite(request.data?.code);
   const [trainer, client] = await Promise.all([
     db.doc(`trainers/${trainerId}`).get(),
