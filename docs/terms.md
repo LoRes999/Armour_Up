@@ -1,31 +1,34 @@
 # Terms of Service
 
 **Strength Coach**
-Last updated: 8 September 2026
+Last updated: 13 September 2026
 
 ## 1. What this app is
 
-Strength Coach is a tool for strength coaches to programme and log training
+Strength Coach is a tool for strength coaches to program and log training
 sessions, and for their clients to follow them. It records what you tell it. It
 is not a coach, and it does not decide what you should lift.
 
 ## 2. Not medical or fitness advice
 
-The app does not give training or medical advice. Any programme in it was
-written by a human coach, not by the software. Strength training carries risk of
+The app does not give training or medical advice. Any program in it was written
+by a human coach, not by the software. Strength training carries risk of
 injury. You are responsible for deciding what is safe for you to lift, and for
 seeking qualified medical advice before starting or changing a training
-programme. Do not rely on this app in a medical emergency.
+program. Do not rely on this app in a medical emergency.
 
 ## 3. Accounts and invite codes
 
-There are no passwords. A coach subscribes; clients join free using a
-six-character invite code the coach shares with them.
+You sign in with an email address and a password. A coach creates an account
+and subscribes; a client creates a free account with the six-character invite
+code their coach gives them, which links the account to that coach.
 
-An invite code is not a secret credential and does not expire. Anyone who has a
-client's code can open that client's training data on their own device. Share
-codes only with the person they belong to. A coach can invalidate a code at any
-time from the client's screen, which issues a new one.
+Keep your password to yourself. An invite code is for one person: share it only
+with the client it belongs to. A coach can issue a new code at any time from
+the client's screen. The old code stops working straight away, and an account
+that joined with it is signed out.
+
+If a coach deletes their account, their clients' accounts are deleted with it.
 
 ## 4. Subscriptions
 
@@ -37,28 +40,31 @@ annual plan through the App Store or Google Play. Clients never pay.
   before the end of the current period.
 - Your account is charged for renewal within 24 hours of the period ending.
 - You can manage and cancel your subscription in your App Store or Google Play
-  account settings. Deleting the app does not cancel it.
+  account settings. Deleting the app or your account does not cancel it.
 - Refunds are handled by Apple or Google under their own policies, not by us.
 
-Prices shown in the app are in US dollars and may differ in your region.
+Prices shown in the app may differ in your region.
 
 ## 5. Your content
 
-The programmes, notes, logged sets, custom movements and photos you put into the
-app are yours. We claim no rights over them and, because the app has no server,
-we never receive them. You can export or delete everything from Settings at any
-time.
+The programs, notes, logged sets and custom movements you put into the app are
+yours. We claim no rights over them, and use them only to run the app for you
+and for the people you coach or are coached by. Photos you attach to movements
+stay on your phone. You can export or delete everything from Settings (Profile
+for clients) at any time.
 
 ## 6. Acceptable use
 
 Do not use the app to store content that is unlawful, or that you have no right
-to store — including photographs of people who have not agreed to it.
+to store, including photographs of people who have not agreed to it.
 
 ## 7. Availability and data loss
 
-The app stores data only on your device. We do not back it up, and we cannot
-recover it for you. Losing, wiping or replacing your device loses the data with
-it unless you have exported a copy.
+Your data is stored in your account and syncs between your phones. We work to
+keep the service running and your data safe, but we cannot promise it will
+always be available or free of errors. Keep an export if you want a copy of
+your own. Movement photos are stored only on the phone they were added on, and
+are lost with it.
 
 ## 8. No warranty
 

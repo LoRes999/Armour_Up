@@ -30,7 +30,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
             "bold": true
           },
           {
-            "text": " Last updated: 8 September 2026",
+            "text": " Last updated: 13 September 2026",
             "bold": false
           }
         ]
@@ -48,7 +48,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach keeps your data on your device. There is no server, no account database and no analytics. The app makes no network requests of any kind, so there is nothing for us to collect, sell or lose.",
+            "text": "Strength Coach keeps your training data in your account, so it is the same on every phone you sign in on and a coach and their clients see the same program. We use your data to run the app and for nothing else. There is no advertising, no analytics, and we do not sell or share your data.",
             "bold": false
           }
         ]
@@ -57,7 +57,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "h2",
         "spans": [
           {
-            "text": "What the app stores",
+            "text": "What we store",
             "bold": false
           }
         ]
@@ -66,7 +66,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Everything below is written to your device's local storage and nowhere else:",
+            "text": "When you create an account, and while you use the app, we store:",
             "bold": false
           }
         ]
@@ -75,11 +75,37 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "li",
         "spans": [
           {
-            "text": "Your clients",
+            "text": "Your account",
             "bold": true
           },
           {
-            "text": " — the names, email addresses and invite codes a coach enters when inviting someone, plus each client's chosen weight unit.",
+            "text": ": your email address and a password. Passwords are handled by Google's Firebase Authentication; we never see them.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Coach details",
+            "bold": true
+          },
+          {
+            "text": ": a coach's name, which their clients see.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Clients",
+            "bold": true
+          },
+          {
+            "text": ": the name, email address, weight unit and invite code a coach enters for each client, and which account joined with that code.",
             "bold": false
           }
         ]
@@ -92,7 +118,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
             "bold": true
           },
           {
-            "text": " — programmed sessions, logged sets, weights, reps, session durations, coach notes, personal records and your training calendar.",
+            "text": ": workouts, logged sets, weights, reps, session times and durations, coach notes, day types, the text of custom movements (name, description, cues and muscles), personal records and history.",
             "bold": false
           }
         ]
@@ -101,24 +127,11 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "li",
         "spans": [
           {
-            "text": "Your own additions",
+            "text": "Notification settings",
             "bold": true
           },
           {
-            "text": " — any custom movements you write, including descriptions, coaching cues and photos you attach from your photo library.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "Preferences",
-            "bold": true
-          },
-          {
-            "text": " — light or dark appearance, and which side of the app you are signed into.",
+            "text": ": which notifications you have switched on, and a push token that lets us send them to your phone.",
             "bold": false
           }
         ]
@@ -131,7 +144,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
             "bold": true
           },
           {
-            "text": " — whether a coaching subscription is active. Payment itself is handled by the App Store or Google Play; the app never sees your card details.",
+            "text": ": whether a coaching subscription is active. Payment is handled by the App Store or Google Play; we never see your card details.",
             "bold": false
           }
         ]
@@ -140,70 +153,42 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "h2",
         "spans": [
           {
-            "text": "What the app does not do",
+            "text": "What stays on your phone",
             "bold": false
           }
         ]
       },
       {
         "kind": "li",
-        "spans": [
-          {
-            "text": "It does not transmit any of the above anywhere. There is no backend service.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "It does not use analytics, crash reporting, advertising or tracking of any kind, and contains no third-party SDKs that perform them.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "It does not create an account for you, and there is no password to lose.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "It does not access your location, contacts, microphone, camera or health data.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "h2",
-        "spans": [
-          {
-            "text": "Email addresses",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "p",
-        "spans": [
-          {
-            "text": "A coach can enter a client's email address when creating an invitation. It is stored on the coach's device as a label so they can tell two clients apart. The app never sends email and never transmits the address. If you would rather not record one, any text will do.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "h2",
         "spans": [
           {
             "text": "Photos",
+            "bold": true
+          },
+          {
+            "text": " you attach to a custom movement. They are copied into the app's own storage on your phone and are never uploaded.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Appearance",
+            "bold": true
+          },
+          {
+            "text": ": light or dark.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "Who else handles it",
             "bold": false
           }
         ]
@@ -212,7 +197,251 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "If you attach a photo to a movement you have written, the app asks for permission to read your photo library, and stores a reference to the image on your device. Photos are not uploaded.",
+            "text": "A few services run the app for us. They process data on our behalf, not for their own purposes:",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Google Firebase",
+            "bold": true
+          },
+          {
+            "text": " (Authentication, Cloud Firestore and Cloud Functions) holds accounts and data, in the United States.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Expo's push notification service",
+            "bold": true
+          },
+          {
+            "text": " passes notifications on to Apple's and Google's push services. It receives your push token and the text of each notification.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Apple and Google",
+            "bold": true
+          },
+          {
+            "text": " process subscription payments and deliver notifications.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "What we don't do",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "No advertising, analytics, crash reporting or tracking of any kind.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "We don't sell your data or share it for anyone else's purposes.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "The app does not access your location, contacts, camera, microphone or health data.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "Who can see what",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "A coach sees everything about the clients on their roster: their details, workouts, logged sets and history.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "A client sees their own workouts, history and records, their coach's name and the notes their coach writes. Clients cannot see other clients.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "We can reach stored data only to operate and support the app.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "How long we keep it",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "p",
+        "spans": [
+          {
+            "text": "Your data is kept for as long as your account exists. A few records exist only briefly, and are deleted automatically:",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "a record that a notification was sent, so it is not sent twice: 30 days;",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "a count of invite-code lookups, kept against a scrambled (hashed) network address rather than the address itself, to slow down guessing: 1 hour;",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "a delivery receipt for each notification: 1 day.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "Deleting your account",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "p",
+        "spans": [
+          {
+            "text": "Settings (coaches) or Profile (clients) → ",
+            "bold": false
+          },
+          {
+            "text": "Delete account",
+            "bold": true
+          },
+          {
+            "text": " deletes your account and your data from our servers immediately.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "Deleting a coach account also deletes that coach's clients' accounts, along with their programs and history.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "When a client deletes their account, their coach is told that they left.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "li",
+        "spans": [
+          {
+            "text": "A short marker that a record was deleted (its ID and the time, with none of its content) is kept so your other phones remove it too.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "p",
+        "spans": [
+          {
+            "text": "Cancelling a subscription is separate: do it in your App Store or Google Play settings.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "h2",
+        "spans": [
+          {
+            "text": "Exporting your data",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "p",
+        "spans": [
+          {
+            "text": "Settings or Profile → ",
+            "bold": false
+          },
+          {
+            "text": "Export my data",
+            "bold": true
+          },
+          {
+            "text": " gives you a copy of everything the app holds about you, as a JSON file.",
             "bold": false
           }
         ]
@@ -230,73 +459,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach is not directed at children under 13 and collects nothing from them, because it collects nothing from anyone.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "h2",
-        "spans": [
-          {
-            "text": "Your control over your data",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "Export",
-            "bold": true
-          },
-          {
-            "text": " — Settings → Export my data writes everything the app holds about you to a JSON file you keep.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "Delete",
-            "bold": true
-          },
-          {
-            "text": " — Settings → Delete account removes your data from the device immediately and permanently. Because nothing was ever sent anywhere, deletion is complete at that moment; there are no copies to request the removal of.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "li",
-        "spans": [
-          {
-            "text": "Uninstalling",
-            "bold": true
-          },
-          {
-            "text": " the app also removes everything it stored.",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "h2",
-        "spans": [
-          {
-            "text": "A consequence worth knowing",
-            "bold": false
-          }
-        ]
-      },
-      {
-        "kind": "p",
-        "spans": [
-          {
-            "text": "Because your data lives only on your device and is never backed up to a server, losing or wiping the device loses the data with it. Use Export if you want a copy you keep somewhere else.",
+            "text": "Strength Coach is not directed at children under 13, and we do not knowingly collect data from them. If you believe a child has an account, contact us and we will delete it.",
             "bold": false
           }
         ]
@@ -350,7 +513,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
             "bold": true
           },
           {
-            "text": " Last updated: 8 September 2026",
+            "text": " Last updated: 13 September 2026",
             "bold": false
           }
         ]
@@ -368,7 +531,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach is a tool for strength coaches to programme and log training sessions, and for their clients to follow them. It records what you tell it. It is not a coach, and it does not decide what you should lift.",
+            "text": "Strength Coach is a tool for strength coaches to program and log training sessions, and for their clients to follow them. It records what you tell it. It is not a coach, and it does not decide what you should lift.",
             "bold": false
           }
         ]
@@ -386,7 +549,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "The app does not give training or medical advice. Any programme in it was written by a human coach, not by the software. Strength training carries risk of injury. You are responsible for deciding what is safe for you to lift, and for seeking qualified medical advice before starting or changing a training programme. Do not rely on this app in a medical emergency.",
+            "text": "The app does not give training or medical advice. Any program in it was written by a human coach, not by the software. Strength training carries risk of injury. You are responsible for deciding what is safe for you to lift, and for seeking qualified medical advice before starting or changing a training program. Do not rely on this app in a medical emergency.",
             "bold": false
           }
         ]
@@ -404,7 +567,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "There are no passwords. A coach subscribes; clients join free using a six-character invite code the coach shares with them.",
+            "text": "You sign in with an email address and a password. A coach creates an account and subscribes; a client creates a free account with the six-character invite code their coach gives them, which links the account to that coach.",
             "bold": false
           }
         ]
@@ -413,7 +576,16 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "An invite code is not a secret credential and does not expire. Anyone who has a client's code can open that client's training data on their own device. Share codes only with the person they belong to. A coach can invalidate a code at any time from the client's screen, which issues a new one.",
+            "text": "Keep your password to yourself. An invite code is for one person: share it only with the client it belongs to. A coach can issue a new code at any time from the client's screen. The old code stops working straight away, and an account that joined with it is signed out.",
+            "bold": false
+          }
+        ]
+      },
+      {
+        "kind": "p",
+        "spans": [
+          {
+            "text": "If a coach deletes their account, their clients' accounts are deleted with it.",
             "bold": false
           }
         ]
@@ -467,7 +639,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "li",
         "spans": [
           {
-            "text": "You can manage and cancel your subscription in your App Store or Google Play account settings. Deleting the app does not cancel it.",
+            "text": "You can manage and cancel your subscription in your App Store or Google Play account settings. Deleting the app or your account does not cancel it.",
             "bold": false
           }
         ]
@@ -485,7 +657,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Prices shown in the app are in US dollars and may differ in your region.",
+            "text": "Prices shown in the app may differ in your region.",
             "bold": false
           }
         ]
@@ -503,7 +675,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "The programmes, notes, logged sets, custom movements and photos you put into the app are yours. We claim no rights over them and, because the app has no server, we never receive them. You can export or delete everything from Settings at any time.",
+            "text": "The programs, notes, logged sets and custom movements you put into the app are yours. We claim no rights over them, and use them only to run the app for you and for the people you coach or are coached by. Photos you attach to movements stay on your phone. You can export or delete everything from Settings (Profile for clients) at any time.",
             "bold": false
           }
         ]
@@ -521,7 +693,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Do not use the app to store content that is unlawful, or that you have no right to store — including photographs of people who have not agreed to it.",
+            "text": "Do not use the app to store content that is unlawful, or that you have no right to store, including photographs of people who have not agreed to it.",
             "bold": false
           }
         ]
@@ -539,7 +711,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "The app stores data only on your device. We do not back it up, and we cannot recover it for you. Losing, wiping or replacing your device loses the data with it unless you have exported a copy.",
+            "text": "Your data is stored in your account and syncs between your phones. We work to keep the service running and your data safe, but we cannot promise it will always be available or free of errors. Keep an export if you want a copy of your own. Movement photos are stored only on the phone they were added on, and are lost with it.",
             "bold": false
           }
         ]
