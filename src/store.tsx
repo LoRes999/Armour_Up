@@ -20,6 +20,7 @@ import {
   Subscription,
   WeightUnit,
   Workout,
+  clampReps,
   exerciseIsComplete,
   isLogged,
   loggedCount,
@@ -558,7 +559,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setTargetReps: (workoutId, exercise, set, reps) =>
         mutate(workoutId, (w) => {
           const target = w.exercises[exercise]?.sets[set];
-          if (target) target.targetReps = Math.max(1, reps);
+          if (target) target.targetReps = clampReps(reps);
         }),
 
       /** Duplicates the last set, which is what a trainer nearly always wants. */
@@ -604,7 +605,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const target = w.exercises[exercise]?.sets[set];
           if (!target) return;
           target.loggedWeight = weight;
-          target.loggedReps = reps;
+          target.loggedReps = clampReps(reps);
           if (w.status === 'scheduled') {
             w.status = 'inProgress';
             w.startedAt = w.startedAt ?? new Date().toISOString();
@@ -658,7 +659,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (w.loggedBy !== 'client') return;
           const target = w.exercises[exercise]?.sets[set];
           if (!target) return;
-          target.loggedReps = Math.max(1, reps);
+          target.loggedReps = clampReps(reps);
           target.loggedWeight = target.loggedWeight ?? target.targetWeight;
           if (w.status === 'scheduled') {
             w.status = 'inProgress';

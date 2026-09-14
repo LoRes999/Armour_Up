@@ -15,7 +15,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette, metrics, usePalette } from '../theme';
-import { WeightUnit, formatWeight, toCanonical, toDisplay, unitIncrement } from '../models';
+import {
+  MAX_REPS,
+  MAX_WEIGHT_KG,
+  WeightUnit,
+  formatWeight,
+  parseWeightInput,
+  toCanonical,
+  toDisplay,
+  unitIncrement,
+} from '../models';
 
 // MARK: - Text
 
@@ -358,7 +367,8 @@ export function WeightStepper({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const shown = toDisplay(value, unit);
-  const emit = (next: number) => onChange(toCanonical(Math.max(0, next), unit));
+  const emit = (next: number) =>
+    onChange(Math.min(MAX_WEIGHT_KG, toCanonical(Math.max(0, next), unit)));
   // Centring the row would centre the numeral *and* its unit as one group,
   // leaving the digits sitting left of true centre by half of 'kg'. Padding
   // the container by the unit's width shifts the content centre right by half
@@ -374,9 +384,9 @@ export function WeightStepper({
   const commit = () => {
     // An emptied box means "never mind", not zero. Number('') is 0, so clearing
     // the field and pressing Set used to write a 0 kg set.
-    const text = draft.trim().replace(',', '.');
-    const parsed = Number(text);
-    if (text !== '' && !Number.isNaN(parsed)) emit(parsed);
+    // Anything but a plain weight within the limit is refused the same way.
+    const parsed = parseWeightInput(draft, unit);
+    if (parsed !== undefined) emit(parsed);
     setEditing(false);
   };
 
@@ -524,7 +534,7 @@ export function RepStepper({ value, onChange }: { value: number; onChange: (next
         <Ionicons name="remove" size={15} color={p.dim} />
       </Pressable>
       <Pressable
-        onPress={() => onChange(value + 1)}
+        onPress={() => onChange(Math.min(MAX_REPS, value + 1))}
         hitSlop={{ left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityLabel="One rep more"

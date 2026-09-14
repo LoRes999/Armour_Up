@@ -12,6 +12,7 @@ import {
   loggedSets,
   makeInviteCode,
   normaliseCode,
+  parseWeightInput,
   schemeSummary,
   toCanonical,
   toDisplay,
@@ -167,6 +168,27 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// The weight keypad took "1e4" as 10,000 and "1,000" as 1, with no top.
+describe('parseWeightInput', () => {
+  it('reads whole and decimal numbers, with a point or a comma', () => {
+    expect(parseWeightInput('102.5', 'kg')).toBe(102.5);
+    expect(parseWeightInput('102,5', 'kg')).toBe(102.5);
+    expect(parseWeightInput(' 80 ', 'lb')).toBe(80);
+  });
+
+  it('refuses what is not a weight', () => {
+    ['', '1e4', '1,000', '-5', 'abc', '.', '1.2.3'].forEach((text) =>
+      expect(parseWeightInput(text, 'kg')).toBeUndefined()
+    );
+  });
+
+  it('refuses more than the limit, in the unit shown', () => {
+    expect(parseWeightInput('1001', 'kg')).toBeUndefined();
+    expect(parseWeightInput('1001', 'lb')).toBe(1001);
+    expect(parseWeightInput('2300', 'lb')).toBeUndefined();
+  });
+});
 
 // An emoji is two UTF-16 units; taking the first alone put a broken
 // character in the avatar.

@@ -559,6 +559,30 @@ describe('the coach note', () => {
   });
 });
 
+// The rep stepper had no top, so a stuck tap could send 500 reps into records.
+describe('rep limits', () => {
+  it('caps target and logged reps at 100', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+    await act(() => {
+      result.current.setTargetReps(workoutId, 0, 0, 500);
+    });
+    expect(result.current.workout(workoutId)?.exercises[0].sets[0].targetReps).toBe(100);
+
+    await act(() => {
+      result.current.logSet(workoutId, 0, 0, 60, 500);
+    });
+    expect(result.current.workout(workoutId)?.exercises[0].sets[0].loggedReps).toBe(100);
+  });
+});
+
 describe('renaming a custom movement', () => {
   it('moves past sessions, records and the chart to the new name', async () => {
     const { result } = await mount();

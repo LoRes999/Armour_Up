@@ -66,6 +66,26 @@ export function trendVerb(first: number, last: number): string {
   return 'holding at';
 }
 
+/** Heavier than any lift on record, in canonical kilograms. */
+export const MAX_WEIGHT_KG = 1000;
+
+/** More reps than any set is programmed or logged with. */
+export const MAX_REPS = 100;
+
+export const clampReps = (reps: number) => Math.min(MAX_REPS, Math.max(1, Math.round(reps)));
+
+/**
+ * What the weight keypad accepts: a plain number with at most two decimals,
+ * after a point or a comma, within the limit in the unit shown. Anything else
+ * is refused: Number() read "1e4" as 10,000 and "1,000" became 1.
+ */
+export function parseWeightInput(text: string, unit: WeightUnit): number | undefined {
+  const trimmed = text.trim();
+  if (!/^\d{1,4}([.,]\d{1,2})?$/.test(trimmed)) return undefined;
+  const value = Number(trimmed.replace(',', '.'));
+  return value <= toDisplay(MAX_WEIGHT_KG, unit) ? value : undefined;
+}
+
 /**
  * What the trainer is paying for. The domain type lives here; the mechanism
  * that grants it lives in purchases.ts, so swapping the purchase backend never
