@@ -120,6 +120,7 @@ interface StoreValue {
   addSet: (workoutId: string, exercise: number) => void;
   removeSet: (workoutId: string, exercise: number, set: number) => void;
   addExercise: (workoutId: string, movementName: string) => void;
+  removeExercise: (workoutId: string, exercise: number) => void;
   logSet: (
     workoutId: string,
     exercise: number,
@@ -574,6 +575,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }));
           const entry: ExerciseEntry = { id: makeId('ex'), movementName, sets };
           w.exercises.push(entry);
+        }),
+
+      removeExercise: (workoutId, exercise) =>
+        mutate(workoutId, (w) => {
+          w.exercises.splice(exercise, 1);
         }),
 
       logSet: (workoutId, exercise, set, weight, reps) =>

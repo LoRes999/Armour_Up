@@ -353,6 +353,24 @@ export default function Builder() {
                       />
                     </View>
                   </View>
+
+                  {/* A mis-added exercise used to mean deleting the whole
+                      workout (Ryan's call, 2026-09-13). */}
+                  <Pressable
+                    onPress={() =>
+                      confirm({
+                        title: `Remove ${exercise.movementName}?`,
+                        confirmLabel: 'Remove',
+                        cancelLabel: 'Keep',
+                        destructive: true,
+                        onConfirm: () => store.removeExercise(workout.id, position),
+                      })
+                    }
+                    accessibilityRole="button"
+                    style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: p.danger }}>Remove exercise</Text>
+                  </Pressable>
                 </View>
               ) : null}
             </Card>

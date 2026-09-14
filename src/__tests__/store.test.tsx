@@ -76,6 +76,36 @@ const completedSession = async (
  * up a milestone. The solo footer button already refused; the header flags on
  * both session screens did not, and the store never checked.
  */
+/**
+ * The builder had no way to remove an exercise once added: the only fix was
+ * deleting the whole workout. Ryan chose a "Remove exercise" button in the
+ * expanded card (2026-09-13); this is the store action behind it.
+ */
+describe('removing an exercise', () => {
+  it('takes out just that exercise and keeps the rest in order', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+      result.current.addExercise(workoutId, 'Back Squat');
+      result.current.addExercise(workoutId, 'Deadlift');
+    });
+
+    await act(() => {
+      result.current.removeExercise(workoutId, 1);
+    });
+
+    expect(result.current.workout(workoutId)?.exercises.map((e) => e.movementName)).toEqual([
+      'Bench Press',
+      'Deadlift',
+    ]);
+  });
+});
+
 describe('finishing a session with nothing logged', () => {
   it('refuses a session with nothing logged', async () => {
     const { result } = await mount();
