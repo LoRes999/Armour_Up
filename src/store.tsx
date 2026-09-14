@@ -719,6 +719,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // second tap counting the same session twice.
         const target = workouts.find((w) => w.id === workoutId);
         if (!target || target.status === 'completed') return;
+        // Nothing logged is not a session: it went into History as "0 sets",
+        // counted for the streak and used up a milestone.
+        if (loggedSets(target) === 0) return;
         mutate(workoutId, (w) => {
           w.status = 'completed';
           w.durationMinutes = durationMinutes;

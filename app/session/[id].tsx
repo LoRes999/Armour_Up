@@ -106,6 +106,8 @@ export default function LiveSession() {
 
   const workoutName = workout?.name;
   const hasWorkout = workout !== undefined;
+  // Nothing logged yet: there is no session to finish.
+  const canFinish = workout !== undefined && loggedSets(workout) > 0;
   const headerOptions = useMemo(
     () => ({
       title: workoutName ?? 'Session',
@@ -123,16 +125,18 @@ export default function LiveSession() {
         ? () => (
             <Pressable
               onPress={() => actions.current.confirmFinish()}
+              disabled={!canFinish}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Finish session"
+              accessibilityState={{ disabled: !canFinish }}
             >
-              <Ionicons name="flag-outline" size={22} color={p.accent} />
+              <Ionicons name="flag-outline" size={22} color={canFinish ? p.accent : p.dim} />
             </Pressable>
           )
         : undefined,
     }),
-    [workoutName, hasWorkout, p.dim, p.accent]
+    [workoutName, hasWorkout, canFinish, p.dim, p.accent]
   );
 
   if (!workout) {

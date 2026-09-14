@@ -69,6 +69,8 @@ export default function SoloSession() {
 
   const isSoloWorkout = workout !== undefined && workout.loggedBy === 'client';
   const workoutName = workout?.name;
+  // Nothing logged yet: there is no session to finish (as the footer button says).
+  const canFinish = workout !== undefined && loggedSets(workout) > 0;
   const headerOptions = useMemo(
     () => ({
       title: isSoloWorkout ? (workoutName ?? 'Session') : 'Session',
@@ -86,16 +88,18 @@ export default function SoloSession() {
         ? () => (
             <Pressable
               onPress={() => actions.current.confirmFinish()}
+              disabled={!canFinish}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Finish session"
+              accessibilityState={{ disabled: !canFinish }}
             >
-              <Ionicons name="flag-outline" size={22} color={p.accent} />
+              <Ionicons name="flag-outline" size={22} color={canFinish ? p.accent : p.dim} />
             </Pressable>
           )
         : undefined,
     }),
-    [isSoloWorkout, workoutName, p.dim, p.accent]
+    [isSoloWorkout, workoutName, canFinish, p.dim, p.accent]
   );
 
   if (!workout || workout.loggedBy !== 'client') {

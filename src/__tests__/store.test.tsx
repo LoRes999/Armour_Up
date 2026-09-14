@@ -70,6 +70,43 @@ const completedSession = async (
  * coach sees any of today's sessions that has exercises, since they may run it
  * live without sending it; the client sees only what their coach has sent.
  */
+/**
+ * A session finished with nothing logged went into History as "0 sets", added
+ * one to the session count, counted as a training week for the streak and used
+ * up a milestone. The solo footer button already refused; the header flags on
+ * both session screens did not, and the store never checked.
+ */
+describe('finishing a session with nothing logged', () => {
+  it('refuses a session with nothing logged', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+
+    await act(() => {
+      result.current.finishWorkout(workoutId, 30);
+    });
+
+    expect(result.current.workout(workoutId)?.status).not.toBe('completed');
+    expect(result.current.clients.find((c) => c.id === clientId)?.sessionsCompleted).toBe(0);
+    expect(result.current.historyFor(clientId)).toEqual([]);
+  });
+
+  it('finishes one with a set logged', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    const workoutId = await completedSession(result, clientId, 'Bench Press', [60], daysAgo(0));
+
+    expect(result.current.workout(workoutId)?.status).toBe('completed');
+    expect(result.current.clients.find((c) => c.id === clientId)?.sessionsCompleted).toBe(1);
+  });
+});
+
 describe("today's session", () => {
   it('leaves an empty draft off both Today screens', async () => {
     const { result } = await mount();
@@ -216,6 +253,10 @@ describe('finishing a session', () => {
     });
     await act(() => {
       result.current.addExercise(workoutId, 'Bench Press');
+    });
+    // A set logged, so there is a session to finish at all.
+    await act(() => {
+      result.current.logSet(workoutId, 0, 0, 60, 5);
     });
 
     await act(() => {
