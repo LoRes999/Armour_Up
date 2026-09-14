@@ -923,10 +923,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addCustomMovement: (input) =>
         setCustomMovements((current) => [...current, { ...input, id: makeId('mv') }]),
 
-      updateCustomMovement: (id, patch) =>
+      updateCustomMovement: (id, patch) => {
         setCustomMovements((current) =>
           current.map((m) => (m.id === id ? { ...m, ...patch } : m))
-        ),
+        );
+        // A rename carries history along (Ryan's call, 2026-09-13): left on the
+        // old name, one lift's records and chart split in two.
+        const before = customMovements.find((m) => m.id === id)?.name;
+        const after = patch.name;
+        if (!before || !after || after === before) return;
+        const matches = (name: string) => name.toLowerCase() === before.toLowerCase();
+        setWorkouts((current) =>
+          current.map((w) =>
+            w.exercises.some((e) => matches(e.movementName))
+              ? {
+                  ...w,
+                  exercises: w.exercises.map((e) =>
+                    matches(e.movementName) ? { ...e, movementName: after } : e
+                  ),
+                }
+              : w
+          )
+        );
+      },
 
       removeCustomMovement: (id) =>
         setCustomMovements((current) => current.filter((m) => m.id !== id)),

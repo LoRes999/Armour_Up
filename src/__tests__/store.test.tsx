@@ -515,6 +515,40 @@ describe('repeating a session', () => {
   });
 });
 
+// Renaming used to leave old sessions on the old name, splitting one lift's
+// records and chart in two. A rename carries history along (Ryan's call,
+// 2026-09-13).
+describe('renaming a custom movement', () => {
+  it('moves past sessions, records and the chart to the new name', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    await act(() => {
+      result.current.addCustomMovement({
+        name: 'DB Press',
+        description: '',
+        cues: [],
+        muscles: [],
+        photoUris: [],
+      });
+    });
+    await completedSession(result, clientId, 'db press', [30], daysAgo(6));
+    await completedSession(result, clientId, 'DB Press', [32.5], daysAgo(3));
+    await completedSession(result, clientId, 'Bench Press', [70], daysAgo(2));
+    const movementId = result.current.customMovements[0].id;
+
+    await act(() => {
+      result.current.updateCustomMovement(movementId, { name: 'Dumbbell Press' });
+    });
+
+    expect(result.current.trainedMovements(clientId).sort()).toEqual(['Bench Press', 'Dumbbell Press']);
+    expect(result.current.topSetSeries(clientId, 'Dumbbell Press')).toHaveLength(2);
+    const record = result.current
+      .personalRecords(clientId)
+      .find((r) => r.movementName === 'Dumbbell Press');
+    expect(record?.weight).toBe(32.5);
+  });
+});
+
 describe('personal records', () => {
   // A warm-up set in the same session used to become the "previous" record:
   // [45, 47.5, 47.5] rendered as "47.5 — was 45", as though 45 were a best that
