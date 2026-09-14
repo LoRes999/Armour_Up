@@ -28,7 +28,7 @@ export function buildExport(bundle: Omit<ExportBundle, 'exportedAt'>): string {
 
 export async function exportData(bundle: Omit<ExportBundle, 'exportedAt'>) {
   const json = buildExport(bundle);
-  const filename = `strength-coach-export-${new Date().toISOString().slice(0, 10)}.json`;
+  const filename = `armourup-export-${new Date().toISOString().slice(0, 10)}.json`;
 
   if (Platform.OS === 'web') {
     if (typeof document === 'undefined') return;

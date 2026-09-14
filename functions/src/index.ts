@@ -1,5 +1,5 @@
 /**
- * Strength Coach Cloud Functions.
+ * ArmourUp Fitness Cloud Functions.
  *
  * - Accounts: createTrainerProfile, previewInvite, redeemInvite, deleteAccount
  * - Invites: createInvite, regenerateInviteCode

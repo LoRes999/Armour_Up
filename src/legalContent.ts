@@ -26,7 +26,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach",
+            "text": "ArmourUp Fitness",
             "bold": true
           },
           {
@@ -48,7 +48,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach keeps your training data in your account, so it is the same on every phone you sign in on and a coach and their clients see the same program. We use your data to run the app and for nothing else. There is no advertising, no analytics, and we do not sell or share your data.",
+            "text": "ArmourUp Fitness keeps your training data in your account, so it is the same on every phone you sign in on and a coach and their clients see the same program. We use your data to run the app and for nothing else. There is no advertising, no analytics, and we do not sell or share your data.",
             "bold": false
           }
         ]
@@ -459,7 +459,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach is not directed at children under 13, and we do not knowingly collect data from them. If you believe a child has an account, contact us and we will delete it.",
+            "text": "ArmourUp Fitness is not directed at children under 13, and we do not knowingly collect data from them. If you believe a child has an account, contact us and we will delete it.",
             "bold": false
           }
         ]
@@ -509,7 +509,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach",
+            "text": "ArmourUp Fitness",
             "bold": true
           },
           {
@@ -531,7 +531,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Strength Coach is a tool for strength coaches to program and log training sessions, and for their clients to follow them. It records what you tell it. It is not a coach, and it does not decide what you should lift.",
+            "text": "ArmourUp Fitness is a tool for strength coaches to program and log training sessions, and for their clients to follow them. It records what you tell it. It is not a coach, and it does not decide what you should lift.",
             "bold": false
           }
         ]

@@ -1,11 +1,11 @@
 # Terms of Service
 
-**Strength Coach**
+**ArmourUp Fitness**
 Last updated: 13 September 2026
 
 ## 1. What this app is
 
-Strength Coach is a tool for strength coaches to program and log training
+ArmourUp Fitness is a tool for strength coaches to program and log training
 sessions, and for their clients to follow them. It records what you tell it. It
 is not a coach, and it does not decide what you should lift.
 

@@ -7,7 +7,7 @@ rejected, because a reviewer cannot otherwise reach either side of it.
 
 ## Why this is needed
 
-Strength Coach has two sides. A coach subscribes and builds programs; their
+ArmourUp Fitness has two sides. A coach subscribes and builds programs; their
 clients join free with a six-character invite code the coach gives them. Both
 sides need an account, so a reviewer needs a ready-made coach and client.
 
