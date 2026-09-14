@@ -6,6 +6,7 @@ import { useStore } from '../../../src/store';
 import { usePalette } from '../../../src/theme';
 import { PrimaryButton } from '../../../src/components/ui';
 import SessionDetail from '../../../src/components/SessionDetail';
+import { confirm } from '../../../src/confirm';
 
 export default function WorkoutDetail() {
   const p = usePalette();
@@ -20,11 +21,29 @@ export default function WorkoutDetail() {
    * forward what they actually lifted, not what was prescribed at the time.
    */
   const repeat = () => {
-    const soloId = store.repeatWorkout(id);
     // push, not replace: replacing diverges at the root stack and tears down the
     // whole client tab navigator, which leaves the solo screen with nothing to
     // dismiss back to and strands this tab on a single detail route.
-    if (soloId) router.push({ pathname: '/solo/[id]', params: { id: soloId } });
+    const open = (soloId: string | undefined) => {
+      if (soloId) router.push({ pathname: '/solo/[id]', params: { id: soloId } });
+    };
+    const unfinished = workout ? store.activeSoloFor(workout.clientId) : undefined;
+    // Another session of their own still open used to be opened instead,
+    // without a word. Now the client picks (Ryan's call, 2026-09-13). The same
+    // session again is the one already open, so that just carries on.
+    if (!workout || !unfinished || unfinished.name === workout.name) {
+      open(store.repeatWorkout(id));
+      return;
+    }
+    confirm({
+      title: `You have ${unfinished.name} in progress`,
+      message: `Starting ${workout.name} instead throws away the unfinished ${unfinished.name}.`,
+      confirmLabel: `Start ${workout.name}`,
+      cancelLabel: `Continue ${unfinished.name}`,
+      destructive: true,
+      onConfirm: () => open(store.repeatWorkout(id, { replace: true })),
+      onCancel: () => open(unfinished.id),
+    });
   };
 
   /**

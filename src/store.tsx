@@ -136,7 +136,8 @@ interface StoreValue {
   redeemInviteCode: (code: string) => Client | undefined;
   regenerateInviteCode: (clientId: string) => string;
   /** Copies a completed session forward as a solo one the client owns. */
-  repeatWorkout: (sourceWorkoutId: string) => string | undefined;
+  /** With `replace`, an unfinished solo session is thrown away for this one. */
+  repeatWorkout: (sourceWorkoutId: string, options?: { replace?: boolean }) => string | undefined;
   removeWorkout: (workoutId: string) => void;
   /** Puts a workout back exactly as a copy of it had it: the builder's Cancel. */
   restoreWorkout: (snapshot: Workout) => void;
@@ -668,7 +669,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
        * from what they actually lifted rather than what was prescribed back
        * then — repeating means repeating the real thing.
        */
-      repeatWorkout: (sourceWorkoutId) => {
+      repeatWorkout: (sourceWorkoutId, options) => {
         const source = workouts.find((w) => w.id === sourceWorkoutId);
         if (!source) return undefined;
 
@@ -677,11 +678,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           (w) =>
             w.clientId === source.clientId && w.loggedBy === 'client' && w.status !== 'completed'
         );
-        if (open) return open.id;
+        if (open && !options?.replace) return open.id;
 
         const id = makeId('w');
         setWorkouts((current) => [
-          ...current,
+          ...current.filter((w) => w.id !== open?.id),
           {
             id,
             clientId: source.clientId,

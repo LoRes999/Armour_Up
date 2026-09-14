@@ -501,6 +501,30 @@ describe('repeating a session', () => {
     expect(set?.loggedWeight).toBeUndefined();
   });
 
+  // Repeating a different session used to open the unfinished one instead,
+  // without a word. Now the client picks; "start instead" swaps them.
+  it('can replace an open solo session with a different one', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    const pull = await completedSession(result, clientId, 'Barbell Row', [60], daysAgo(5));
+    const push = await completedSession(result, clientId, 'Bench Press', [70], daysAgo(3));
+
+    let first: string | undefined;
+    let second: string | undefined;
+    await act(() => {
+      first = result.current.repeatWorkout(pull);
+    });
+    await act(() => {
+      second = result.current.repeatWorkout(push, { replace: true });
+    });
+
+    expect(second).not.toBe(first);
+    expect(result.current.workout(first as string)).toBeUndefined();
+    const open = result.current.activeSoloFor(clientId);
+    expect(open?.id).toBe(second);
+    expect(open?.exercises[0].movementName).toBe('Bench Press');
+  });
+
   it('keeps a solo session off the trainer today screen', async () => {
     const { result } = await mount();
     const { id: clientId } = await inviteClient(result);
