@@ -84,7 +84,7 @@ export default function Roster() {
 
       <SegmentedPicker
         options={['today', 'all', 'flagged'] as const}
-        labels={{ today: 'Today', all: 'All', flagged: 'Flagged' }}
+        labels={{ today: 'Today', all: 'All', flagged: 'Inactive' }}
         value={filter}
         onChange={setFilter}
       />
@@ -156,7 +156,7 @@ function ClientRow({ client }: { client: Client }) {
   }
 
   const badge = lapsed
-    ? { text: 'LAPSED', bg: p.accentSoft, fg: p.coral }
+    ? { text: 'INACTIVE', bg: p.accentSoft, fg: p.coral }
     : today
       ? { text: 'TODAY', bg: p.accentSoft, fg: p.accent }
       : { text: 'ON TRACK', bg: p.surfaceAlt, fg: p.dim };
