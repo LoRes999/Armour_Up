@@ -369,7 +369,7 @@ export default function LiveSession() {
             title="Finish session"
             icon="flag"
             tint={p.success}
-            foreground="#FFFFFF"
+            foreground={p.onSuccess}
             onPress={finish}
           />
         )}

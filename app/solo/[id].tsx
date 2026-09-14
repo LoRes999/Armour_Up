@@ -317,7 +317,7 @@ export default function SoloSession() {
             title="Finish session"
             icon="flag"
             tint={p.success}
-            foreground="#10240F"
+            foreground={p.onSuccess}
             enabled={done > 0}
             onPress={confirmFinish}
           />

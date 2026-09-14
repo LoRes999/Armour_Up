@@ -19,6 +19,9 @@ export interface Palette {
   success: string;
   danger: string;
   dangerSoft: string;
+  /** Text and icons on a success or danger fill, at 4.5:1 or better. */
+  onSuccess: string;
+  onDanger: string;
   /** Swatches a trainer picks from when naming a day type. Index-stable across themes. */
   tagColors: string[];
 }
@@ -37,6 +40,9 @@ export const darkPalette: Palette = {
   success: '#7EC58C',
   danger: '#F0776B',
   dangerSoft: '#3A1E1C',
+  // White on these fills was about 2:1 and 2.8:1; dark text reads at 8:1 and 6.8:1.
+  onSuccess: '#10240F',
+  onDanger: '#2A0D0A',
   tagColors: ['#E8A33D', '#E4705A', '#7EC58C', '#6FA8DC', '#B98CD9', '#D9A05B', '#5FBFB0', '#E0678F'],
 };
 
@@ -47,13 +53,18 @@ export const lightPalette: Palette = {
   border: '#E6DBD1',
   text: '#1E1719',
   dim: '#7C6E68',
-  accent: '#B87516',
+  // Deeper than the #B87516 it was, which read at 3.7:1 under white button
+  // text and 3.5:1 as link text on the ground (Ryan's call, 2026-09-13).
+  accent: '#9E630E',
   accentSoft: '#FCF0DC',
   onAccent: '#FFFFFF',
   coral: '#C9543C',
-  success: '#3E8B52',
+  // Was #3E8B52: 4.2:1 under white, 3.9:1 as text on the ground.
+  success: '#367E4B',
   danger: '#C0392B',
   dangerSoft: '#FBEAE7',
+  onSuccess: '#FFFFFF',
+  onDanger: '#FFFFFF',
   // Same hues, darkened so they hold contrast against the light ground.
   tagColors: ['#B87516', '#C9543C', '#3E8B52', '#3C7BB8', '#8B5FB0', '#A5701F', '#2E8C7E', '#C24A72'],
 };

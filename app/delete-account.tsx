@@ -153,7 +153,7 @@ export default function DeleteAccount() {
           <PrimaryButton
             title="Delete my account"
             tint={p.danger}
-            foreground="#FFFFFF"
+            foreground={p.onDanger}
             enabled={armed && !busy}
             onPress={confirmDelete}
           />

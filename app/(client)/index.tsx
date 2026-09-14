@@ -353,7 +353,7 @@ function ExerciseCard({
               backgroundColor: done ? p.success : p.surfaceAlt,
             }}
           >
-            <Ionicons name="checkmark" size={14} color={done ? '#10240F' : p.dim} />
+            <Ionicons name="checkmark" size={14} color={done ? p.onSuccess : p.dim} />
           </View>
 
           <View style={{ flex: 1 }}>
