@@ -1,7 +1,7 @@
 import { logger } from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/scheduler';
 import { db } from './admin';
-import { deliver } from './deliver';
+import { checkReceipts, deliver } from './deliver';
 import { loadDueTrainers } from './load';
 import { planScheduled } from './planner';
 
@@ -23,11 +23,19 @@ export const sendScheduledNotifications = onSchedule(
       logger.warn('scheduled notifications skipped for one person', { uid, error })
     );
     const { sent, skipped } = await deliver(db, messages);
+    // Receipts for earlier runs' messages: phones that no longer have the app
+    // come off their accounts. A failure here must not fail the run.
+    const receipts = await checkReceipts(db).catch((error) => {
+      logger.warn('push receipts not checked', { error });
+      return { checked: 0, removed: 0 };
+    });
     logger.info('scheduled notifications', {
       coaches: trainers.length,
       planned: messages.length,
       sent,
       skipped,
+      receiptsChecked: receipts.checked,
+      tokensRemoved: receipts.removed,
     });
   }
 );
