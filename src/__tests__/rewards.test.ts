@@ -6,6 +6,7 @@ import {
   ordinal,
   relativeDay,
   sessionReward,
+  setsNewRecord,
   weekStreak,
 } from '../rewards';
 
@@ -16,6 +17,39 @@ const at = (year: number, month: number, day: number) => new Date(year, month - 
 
 // Thursday 10 September 2026. Its week began on Monday the 7th.
 const THURSDAY = at(2026, 9, 10);
+
+/**
+ * The "NEW PR" badge on a finished session. It marked every movement in a
+ * client's first session as a PR — a first-ever lift sets a record, but beats
+ * nothing — while the finish celebration, rightly, counted none. One rule now.
+ */
+describe('setsNewRecord', () => {
+  const record = (over: Partial<PersonalRecord> = {}): PersonalRecord => ({
+    movementName: 'Bench Press',
+    weight: 85,
+    reps: 5,
+    date: on(2026, 9, 10),
+    previousWeight: 80,
+    ...over,
+  });
+
+  it('is true for the session that beat an earlier best', () => {
+    expect(setsNewRecord(record(), on(2026, 9, 10), 85)).toBe(true);
+  });
+
+  it('is false for a first-ever lift, which beat nothing', () => {
+    expect(setsNewRecord(record({ previousWeight: undefined }), on(2026, 9, 10), 85)).toBe(false);
+  });
+
+  it('is false for a session that only matched a record set on another day', () => {
+    expect(setsNewRecord(record({ date: on(2026, 9, 3) }), on(2026, 9, 10), 85)).toBe(false);
+  });
+
+  it('is false with no record, or nothing logged', () => {
+    expect(setsNewRecord(undefined, on(2026, 9, 10), 85)).toBe(false);
+    expect(setsNewRecord(record(), on(2026, 9, 10), undefined)).toBe(false);
+  });
+});
 
 describe('weekStreak', () => {
   it('is zero with no history', () => {

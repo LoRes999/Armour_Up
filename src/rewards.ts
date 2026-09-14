@@ -155,6 +155,26 @@ export function ordinal(n: number): string {
  * Returns null when nothing was logged. The solo header flag can finish an empty
  * session, and confetti for that would be absurd.
  */
+/**
+ * Whether a finished session set this movement's record — the "NEW PR" badge.
+ * The same rule as the finish celebration: the record has to have been set in
+ * this session, and it has to have beaten an earlier best. A first-ever lift
+ * sets a record but beats nothing, so it is not a PR.
+ */
+export function setsNewRecord(
+  record: PersonalRecord | undefined,
+  workoutDate: string,
+  topWeight: number | undefined
+): boolean {
+  return (
+    record !== undefined &&
+    topWeight !== undefined &&
+    record.previousWeight !== undefined &&
+    record.date === workoutDate &&
+    topWeight >= record.weight
+  );
+}
+
 export function sessionReward(input: {
   workout: Workout;
   priorRecords: readonly PersonalRecord[];

@@ -17,6 +17,7 @@ import {
   topTargetWeight,
 } from '../models';
 import { useCoachName } from '../auth';
+import { setsNewRecord } from '../rewards';
 
 /**
  * One finished session, in full. Both sides read the same record — the client
@@ -59,13 +60,10 @@ export default function SessionDetail({
   const bests = new Map(
     client ? store.personalRecords(client.id).map((r) => [r.movementName, r] as const) : []
   );
-  const isPR = (exercise: ExerciseEntry) => {
-    const record = bests.get(exercise.movementName);
-    const top = topLoggedWeight(exercise);
-    return (
-      record !== undefined && top !== undefined && top >= record.weight && record.date === workout.date
-    );
-  };
+  // One rule with the finish celebration: a first-ever lift sets a record but
+  // beats nothing, so it is not a PR.
+  const isPR = (exercise: ExerciseEntry) =>
+    setsNewRecord(bests.get(exercise.movementName), workout.date, topLoggedWeight(exercise));
 
   return (
     <ScrollView
