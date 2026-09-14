@@ -18,6 +18,24 @@ type Doc = Record<string, unknown> | undefined;
 const live = (doc: Doc) => doc !== undefined && doc.deleted !== true;
 const asWorkout = (id: string, doc: Doc) => ({ ...(doc as object), id }) as Workout;
 
+/**
+ * Recounts a client's finished sessions, inside a transaction. Counted outside
+ * one, two sessions finished close together raced, and the write that landed
+ * last could leave the count one short. A client who has left is a tombstone,
+ * and nothing is written back onto it.
+ */
+export async function recountSessions(trainerId: string, clientId: string): Promise<void> {
+  const clientRef = db.doc(`trainers/${trainerId}/clients/${clientId}`);
+  await db.runTransaction(async (tx) => {
+    const client = await tx.get(clientRef);
+    if (!client.exists || client.get('deleted') === true) return;
+    const workouts = await tx.get(db.collection(`trainers/${trainerId}/workouts`).where('clientId', '==', clientId));
+    const count = workouts.docs.filter((doc) => doc.get('deleted') !== true && doc.get('status') === 'completed').length;
+    if (client.get('sessionsCompleted') === count) return;
+    tx.update(clientRef, { sessionsCompleted: count, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
+  });
+}
+
 export const onWorkoutWritten = onDocumentWritten('trainers/{trainerId}/workouts/{workoutId}', async (event) => {
   const { trainerId, workoutId } = event.params;
   const before = event.data?.before.exists ? event.data.before.data() : undefined;
@@ -32,10 +50,9 @@ export const onWorkoutWritten = onDocumentWritten('trainers/{trainerId}/workouts
   // The session count belongs to the server. Both the coach's phone and the
   // client's saw the session finish; recounting means it is counted once.
   if (wasCompleted !== isCompleted) {
-    const count = (await clientWorkouts(trainerId, clientId)).filter((w) => w.status === 'completed').length;
-    await clientRef
-      .update({ sessionsCompleted: count, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER })
-      .catch((error) => logger.warn('session count not updated', { trainerId, clientId, error }));
+    await recountSessions(trainerId, clientId).catch((error) =>
+      logger.warn('session count not updated', { trainerId, clientId, error })
+    );
   }
 
   const client = await clientRef.get();

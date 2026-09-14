@@ -59,7 +59,8 @@ export async function loadDueTrainers(now: Date): Promise<TrainerContext[]> {
   for (const trainerId of due) {
     const account = recipientFrom(trainerId, accounts.get(trainerId));
     if (!account) continue;
-    const [clients, workouts] = await Promise.all([
+    const [coach, clients, workouts] = await Promise.all([
+      db.doc(`trainers/${trainerId}`).get(),
       db.collection(`trainers/${trainerId}/clients`).get(),
       db.collection(`trainers/${trainerId}/workouts`).get(),
     ]);
@@ -77,7 +78,9 @@ export async function loadDueTrainers(now: Date): Promise<TrainerContext[]> {
         };
       });
     contexts.push({
-      name: String(accounts.get(trainerId)?.displayName ?? ''),
+      // The coach record's name, as the app and every instant message use; the
+      // profile's own copy could disagree with it.
+      name: String(coach.get('name') ?? accounts.get(trainerId)?.displayName ?? ''),
       account,
       clients: roster,
     });
