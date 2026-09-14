@@ -291,6 +291,8 @@ export default function Builder() {
             <Card key={exercise.id} style={{ padding: 15 }}>
               <Pressable
                 onPress={() => setOpenExercise(open ? '' : exercise.id)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: open }}
                 style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, minHeight: metrics.hitTarget }}
               >
                 <View style={{ flex: 1 }}>
@@ -527,7 +529,7 @@ function MovementPicker({
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: '800', color: p.text }}>Add exercise</Text>
-          <Pressable onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
             <Text style={{ fontSize: 16, color: p.accent }}>Cancel</Text>
           </Pressable>
         </View>
@@ -560,7 +562,7 @@ function MovementPicker({
             />
           ) : (
             results.map((movement) => (
-              <Pressable key={movement} onPress={() => onPick(movement)}>
+              <Pressable accessibilityRole="button" key={movement} onPress={() => onPick(movement)}>
                 <Card
                   radius={14}
                   style={{ paddingHorizontal: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}

@@ -182,7 +182,7 @@ export default function ClientDetail() {
             />
           ) : (
             store.upcomingFor(client.id).map((workout) => (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={workout.id}
                 onPress={() =>
                   // A missed session can still be logged (Ryan's call, 2026-09-13):
@@ -233,7 +233,7 @@ export default function ClientDetail() {
                 .historyFor(client.id)
                 .slice(0, showAllHistory ? undefined : 8)
                 .map((workout) => (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     key={workout.id}
                     onPress={() =>
                       router.push({

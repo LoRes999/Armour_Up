@@ -70,7 +70,7 @@ export default function Library() {
               : info?.muscles.join(' · ') ?? '';
 
             return (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={movement}
                 onPress={() =>
                   router.push({ pathname: '/movement/[name]', params: { name: movement } })

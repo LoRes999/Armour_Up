@@ -170,7 +170,7 @@ export default function ClientToday() {
         {/* A session they started alone. It can sit alongside a coached one —
             a client booked for 6pm can still train by themselves at seven. */}
         {solo ? (
-          <Pressable
+          <Pressable accessibilityRole="button"
             onPress={() => router.push({ pathname: '/solo/[id]', params: { id: solo.id } })}
           >
             <Card
@@ -333,7 +333,7 @@ function ExerciseCard({
       : `${formatIn(set.targetWeight, unit)} × ${set.targetReps}`;
 
   return (
-    <Pressable onPress={onToggle}>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onToggle}>
       <Card radius={16} style={{ paddingHorizontal: 13, paddingVertical: 10 }}>
         <View
           style={{
@@ -358,7 +358,7 @@ function ExerciseCard({
 
           <View style={{ flex: 1 }}>
             {/* The name is the way into the movement's reference entry. */}
-            <Pressable
+            <Pressable accessibilityRole="button"
               onPress={() =>
                 router.push({
                   pathname: '/movement/[name]',

@@ -106,7 +106,7 @@ export default function SessionDetail({
         return (
           <Card key={exercise.id} radius={17} style={{ padding: 13, gap: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 onPress={() =>
                   router.push({
                     pathname: '/movement/[name]',

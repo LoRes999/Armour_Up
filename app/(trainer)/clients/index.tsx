@@ -163,7 +163,7 @@ function ClientRow({ client }: { client: Client }) {
 
   return (
     <Link href={{ pathname: '/(trainer)/clients/[id]', params: { id: client.id } }} asChild>
-      <Pressable>
+      <Pressable accessibilityRole="button">
         <Card
           radius={16}
           style={{

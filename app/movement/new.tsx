@@ -296,7 +296,7 @@ export default function CustomMovementForm() {
           </View>
 
           {existing ? (
-            <Pressable
+            <Pressable accessibilityRole="button"
               onPress={confirmDelete}
               style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
             >

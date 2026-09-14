@@ -42,6 +42,8 @@ export function DayTypeChip({
 
   return (
     <Pressable
+      // Only a control when it does something; otherwise it is a label.
+      accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
       disabled={!onPress}
       style={{
@@ -94,7 +96,7 @@ export function DayTypeSheet({
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: '800', color: p.text }}>Day type</Text>
-          <Pressable onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
             <Text style={{ fontSize: 16, color: p.accent }}>Done</Text>
           </Pressable>
         </View>
@@ -107,6 +109,8 @@ export function DayTypeSheet({
               <Pressable
                 key={dayType.id}
                 onPress={() => onSelect(active ? undefined : dayType.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
               >
                 <Card
                   radius={14}
@@ -220,13 +224,13 @@ export function DayTypeEditor({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <Pressable onPress={tapBackdrop} style={{ flex: 1, backgroundColor: '#0009' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={tapBackdrop} style={{ flex: 1, backgroundColor: '#0009' }}>
           <ScrollView
             contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           >
-        <Pressable onPress={() => {}}>
+        <Pressable accessible={false} onPress={() => {}}>
           <Card style={{ padding: 18, gap: 13 }}>
             <Text style={{ fontSize: 17, fontWeight: '800', color: p.text }}>
               {initial ? 'Edit day type' : 'New day type'}
@@ -302,7 +306,7 @@ export function DayTypeEditor({
             </View>
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 onPress={onClose}
                 style={{
                   flex: 1,
@@ -325,7 +329,7 @@ export function DayTypeEditor({
             </View>
 
             {onDelete ? (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 onPress={onDelete}
                 style={{
                   minHeight: metrics.hitTarget,

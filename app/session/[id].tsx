@@ -237,7 +237,7 @@ export default function LiveSession() {
         {cursor && exercise && target ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 onPress={() =>
                   router.push({
                     pathname: '/movement/[name]',

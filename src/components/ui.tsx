@@ -424,6 +424,9 @@ export function WeightStepper({
         {button('remove', false, () => emit(shown - step), 'Decrease weight')}
         <Pressable
           onPress={open}
+          accessibilityRole="button"
+          accessibilityLabel={`${formatWeight(shown)} ${unit}`}
+          accessibilityHint="Opens a keypad to type a weight"
           style={{
             flex: 1,
             // A minimum rather than a fixed height: text that did not fit used
@@ -472,11 +475,11 @@ export function WeightStepper({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close"
           onPress={() => (keyboardUp() ? dismissKeyboard() : setEditing(false))}
           style={{ flex: 1, backgroundColor: '#0008', alignItems: 'center', justifyContent: 'center', padding: 32 }}
         >
-          <Pressable style={{ width: '100%' }} onPress={() => {}}>
+          <Pressable accessible={false} style={{ width: '100%' }} onPress={() => {}}>
             <Card style={{ padding: 18, gap: 12 }}>
               <Eyebrow>SET WEIGHT ({unit.toUpperCase()})</Eyebrow>
               <TextInput

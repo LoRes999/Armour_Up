@@ -362,7 +362,7 @@ export default function Join() {
                   onPress={accept}
                   enabled={!busy}
                 />
-                <Pressable
+                <Pressable accessibilityRole="button"
                   onPress={close}
                   style={{
                     minHeight: metrics.hitTarget,

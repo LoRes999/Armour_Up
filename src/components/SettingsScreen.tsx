@@ -243,7 +243,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Divider />
-            <Pressable onPress={() => store.restorePurchase()}>
+            <Pressable accessibilityRole="button" onPress={() => store.restorePurchase()}>
               <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
                   Restore purchases
@@ -256,7 +256,7 @@ export default function SettingsScreen() {
             {__DEV__ && store.expireSubscriptionForDemo ? (
               <>
                 <Divider />
-                <Pressable
+                <Pressable accessibilityRole="button"
                   onPress={() => {
                     store.expireSubscriptionForDemo?.();
                     router.replace('/');
@@ -280,7 +280,7 @@ export default function SettingsScreen() {
             {store.dayTypes.map((dayType, index) => (
               <View key={dayType.id}>
                 {index > 0 ? <Divider /> : null}
-                <Pressable onPress={() => setEditing(dayType)}>
+                <Pressable accessibilityRole="button" onPress={() => setEditing(dayType)}>
                   <View
                     style={{
                       minHeight: 46,
@@ -310,7 +310,7 @@ export default function SettingsScreen() {
               </View>
             ))}
             {store.dayTypes.length ? <Divider /> : null}
-            <Pressable onPress={() => setEditing('new')}>
+            <Pressable accessibilityRole="button" onPress={() => setEditing('new')}>
               <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>
                   Add day type
@@ -403,13 +403,13 @@ export default function SettingsScreen() {
               <Divider />
             </>
           ) : null}
-          <Pressable onPress={confirmSignOut}>
+          <Pressable accessibilityRole="button" onPress={confirmSignOut}>
             <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>Sign out</Text>
             </View>
           </Pressable>
           <Divider />
-          <Pressable onPress={() => router.push('/delete-account')}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/delete-account')}>
             <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: p.danger }}>Delete account</Text>
             </View>

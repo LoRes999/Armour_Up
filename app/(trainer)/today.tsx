@@ -41,7 +41,7 @@ export default function TrainerToday() {
         />
       ) : (
         sessions.map(({ client, workout }) => (
-          <Pressable
+          <Pressable accessibilityRole="button"
             key={workout.id}
             onPress={() =>
               router.push({
