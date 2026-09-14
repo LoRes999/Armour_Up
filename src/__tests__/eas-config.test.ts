@@ -15,6 +15,12 @@ const WEB_CONFIG = [
   'APP_ID',
 ];
 
+// Settings shows the build number from app.json. With EAS keeping the numbers
+// remotely, app.json said "build 1" for ever (F15); locally, EAS bumps it.
+it('keeps build numbers in app.json, where Settings reads them', () => {
+  expect(eas.cli.appVersionSource).toBe('local');
+});
+
 describe.each(['production', 'preview'])('the %s build', (profile) => {
   const env: Record<string, string> = eas.build[profile].env ?? {};
 
