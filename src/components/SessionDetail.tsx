@@ -9,12 +9,13 @@ import { DayTypeChip } from './DayTypePicker';
 import {
   ExerciseEntry,
   DEFAULT_UNIT,
+  formatDuration,
   formatIn,
   initialsOf,
   isSolo,
   loggedSets,
   topLoggedWeight,
-  topTargetWeight,
+  topTargetSet,
 } from '../models';
 import { useCoachName } from '../auth';
 import { setsNewRecord } from '../rewards';
@@ -95,12 +96,13 @@ export default function SessionDetail({
         <StatTile label="SETS" value={String(loggedSets(workout))} />
         <StatTile
           label="TIME"
-          value={workout.durationMinutes ? `${workout.durationMinutes}m` : '—'}
+          value={formatDuration(workout.durationMinutes) ?? '—'}
         />
       </View>
 
       {workout.exercises.map((exercise) => {
         const top = topLoggedWeight(exercise);
+        const target = topTargetSet(exercise);
         return (
           <Card key={exercise.id} radius={17} style={{ padding: 13, gap: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -123,11 +125,13 @@ export default function SessionDetail({
                 <Pill label="NEW PR" tint={p.accent} background={p.accentSoft} />
               ) : null}
               <View style={{ flex: 1 }} />
-              <Numeric size={11} color={p.dim} style={{ fontWeight: '500' }}>
-                {`target ${formatIn(topTargetWeight(exercise), unit)} × ${
-                  exercise.sets[0]?.targetReps ?? 0
-                }`}
-              </Numeric>
+              {/* The top weight with its own reps, and a unit: this paired the
+                  top weight with the first set's reps, and named no unit. */}
+              {target ? (
+                <Numeric size={11} color={p.dim} style={{ fontWeight: '500' }}>
+                  {`target ${formatIn(target.targetWeight, unit)} ${unit} × ${target.targetReps}`}
+                </Numeric>
+              ) : null}
             </View>
 
             <View style={{ flexDirection: 'row', gap: 6 }}>

@@ -104,6 +104,23 @@ export function lastSessionLabel(iso: string | undefined, now: Date = new Date()
 export const plural = (count: number, one: string, many = `${one}s`) =>
   `${count} ${count === 1 ? one : many}`;
 
+/** "48 min", "1 hr 12 min"; nothing at all for a session that was not timed. */
+export function formatDuration(minutes: number | undefined): string | undefined {
+  if (!minutes) return undefined;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest} min`;
+  return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
+}
+
+/** The heaviest prescribed set, reps and all. The first of a tie. */
+export function topTargetSet(exercise: ExerciseEntry): SetEntry | undefined {
+  return exercise.sets.reduce<SetEntry | undefined>(
+    (best, set) => (best === undefined || set.targetWeight > best.targetWeight ? set : best),
+    undefined
+  );
+}
+
 /**
  * What the trainer is paying for. The domain type lives here; the mechanism
  * that grants it lives in purchases.ts, so swapping the purchase backend never

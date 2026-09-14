@@ -17,6 +17,7 @@ import {
 import {
   formatInviteCode,
   DEFAULT_UNIT,
+  formatDuration,
   formatIn,
   isSolo,
   initialsOf,
@@ -243,7 +244,18 @@ export default function ClientDetail() {
                   >
                     <Row
                       title={workout.name}
-                      subtitle={`${new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${plural(loggedSets(workout), 'set')} · ${workout.durationMinutes ?? 0} min`}
+                      subtitle={[
+                        new Date(workout.date).toLocaleDateString(undefined, {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                        }),
+                        plural(loggedSets(workout), 'set'),
+                        // Left out when the session was not timed, not "0 min".
+                        formatDuration(workout.durationMinutes),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                       value={String(loggedSets(workout))}
                       unit="SETS"
                       badge={isSolo(workout) ? 'SOLO' : undefined}

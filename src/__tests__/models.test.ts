@@ -6,6 +6,7 @@ import {
   SetEntry,
   UNITS,
   Workout,
+  formatDuration,
   formatIn,
   formatWeight,
   initialsOf,
@@ -19,6 +20,7 @@ import {
   toCanonical,
   toDisplay,
   topLoggedWeight,
+  topTargetSet,
   totalSets,
   trendVerb,
   unitIncrement,
@@ -170,6 +172,35 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// Session detail paired the top target weight with the first set's reps:
+// "target 87.5 × 8" for a top set of 87.5 × 5 (C4).
+describe('topTargetSet', () => {
+  it('is the heaviest target set, with its own reps', () => {
+    const top = topTargetSet(
+      exercise([set({ targetWeight: 80, targetReps: 8 }), set({ targetWeight: 87.5, targetReps: 5 })])
+    );
+    expect(top).toMatchObject({ targetWeight: 87.5, targetReps: 5 });
+  });
+
+  it('is nothing for an exercise with no sets', () => {
+    expect(topTargetSet(exercise([]))).toBeUndefined();
+  });
+});
+
+// Session detail said "48m", History "48 min", and "0 min" when nothing was timed (C3).
+describe('formatDuration', () => {
+  it('reads minutes, then hours', () => {
+    expect(formatDuration(48)).toBe('48 min');
+    expect(formatDuration(60)).toBe('1 hr');
+    expect(formatDuration(72)).toBe('1 hr 12 min');
+  });
+
+  it('has nothing to say when nothing was timed', () => {
+    expect(formatDuration(undefined)).toBeUndefined();
+    expect(formatDuration(0)).toBeUndefined();
+  });
+});
 
 // "1 sets", "1 exercises" and "Your 1 clients are safe" were on screen (C1).
 describe('plural', () => {
