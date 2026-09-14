@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette, metrics, usePalette } from '../theme';
+import { dismissKeyboard, keyboardUp } from '../keyboard';
 import {
   MAX_REPS,
   MAX_WEIGHT_KG,
@@ -472,7 +473,7 @@ export function WeightStepper({
           style={{ flex: 1 }}
         >
         <Pressable
-          onPress={() => (Keyboard.isVisible() ? Keyboard.dismiss() : setEditing(false))}
+          onPress={() => (keyboardUp() ? dismissKeyboard() : setEditing(false))}
           style={{ flex: 1, backgroundColor: '#0008', alignItems: 'center', justifyContent: 'center', padding: 32 }}
         >
           <Pressable style={{ width: '100%' }} onPress={() => {}}>

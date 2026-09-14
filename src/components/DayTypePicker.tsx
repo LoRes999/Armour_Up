@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { metrics, tagColor, usePalette } from '../theme';
+import { dismissKeyboard, keyboardUp } from '../keyboard';
 import { Card, DashedButton, Eyebrow, PrimaryButton } from './ui';
 import { DAY_LABEL_MAX, DayType } from '../models';
 
@@ -206,7 +207,7 @@ export function DayTypeEditor({
   // Tapping the dimmed backdrop hides the keyboard first. It used to close the
   // card outright — throwing away what had been typed — while the keyboard
   // itself covered Create, so on a phone there was no way to finish a new type.
-  const tapBackdrop = () => (Keyboard.isVisible() ? Keyboard.dismiss() : onClose());
+  const tapBackdrop = () => (keyboardUp() ? dismissKeyboard() : onClose());
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
