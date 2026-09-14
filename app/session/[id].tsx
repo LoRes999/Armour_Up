@@ -283,9 +283,10 @@ export default function LiveSession() {
                 >
                   <View style={{ flex: 1 }}>
                     <Eyebrow>REPS</Eyebrow>
-                    <Numeric size={19}>{reps}</Numeric>
                   </View>
-                  <RepStepper value={reps} onChange={setReps} />
+                  {/* The number sits between − and +, like the weight above;
+                      it sat apart from its buttons (Ryan's call, 2026-09-14). */}
+                  <RepStepper value={reps} onChange={setReps} large showLabel={false} />
                 </View>
               </View>
             </Card>

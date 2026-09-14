@@ -524,42 +524,83 @@ export function WeightStepper({
   );
 }
 
+// 32pt tall inside the reps box; the vertical slop brings the target to 44pt.
 const stepperButton = {
   width: 28,
-  height: metrics.hitTarget,
+  height: 32,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
+const stepperSlop = { top: 6, bottom: 6, left: 8, right: 8 };
 
 // hitSlop is ignored on the web, where these were 28px targets. A full-width
 // target pulled in by negative margins takes the same 28px of layout.
 const webStepperButton =
   Platform.OS === 'web' ? { width: metrics.hitTarget, marginHorizontal: -8 } : undefined;
 
-export function RepStepper({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+/**
+ * Reps in a box of their own, − on the left and + on the right like the
+ * weight beside them. Two loose buttons after the number read as more weight
+ * controls (Ryan's call, 2026-09-14). `showLabel` is off where a column
+ * heading already says REPS; `large` is the live session's size.
+ */
+export function RepStepper({
+  value,
+  onChange,
+  showLabel = true,
+  large = false,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  showLabel?: boolean;
+  large?: boolean;
+}) {
   const p = usePalette();
+  const buttonStyle = [stepperButton, large ? { height: metrics.hitTarget } : null, webStepperButton];
   return (
-    <View style={{ flexDirection: 'row', gap: 4 }}>
-      {/* 28pt wide is under the 44pt minimum, and these two sit side by side —
-          hitSlop widens the target without moving anything on screen. */}
-      <Pressable
-        onPress={() => onChange(Math.max(1, value - 1))}
-        hitSlop={{ left: 8, right: 8 }}
-        accessibilityRole="button"
-        accessibilityLabel="One rep fewer"
-        style={[stepperButton, webStepperButton]}
-      >
-        <Ionicons name="remove" size={15} color={p.dim} />
-      </Pressable>
-      <Pressable
-        onPress={() => onChange(Math.min(MAX_REPS, value + 1))}
-        hitSlop={{ left: 8, right: 8 }}
-        accessibilityRole="button"
-        accessibilityLabel="One rep more"
-        style={[stepperButton, webStepperButton]}
-      >
-        <Ionicons name="add" size={15} color={p.accent} />
-      </Pressable>
+    <View
+      style={{
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: p.border,
+        borderRadius: 10,
+        paddingHorizontal: 2,
+        paddingBottom: showLabel ? 4 : 0,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Pressable
+          onPress={() => onChange(Math.max(1, value - 1))}
+          hitSlop={stepperSlop}
+          accessibilityRole="button"
+          accessibilityLabel="One rep fewer"
+          style={buttonStyle}
+        >
+          <Ionicons name="remove" size={15} color={p.dim} />
+        </Pressable>
+        <Numeric
+          size={large ? 19 : 14}
+          style={{ minWidth: large ? 30 : 22, textAlign: 'center' }}
+        >
+          {value}
+        </Numeric>
+        <Pressable
+          onPress={() => onChange(Math.min(MAX_REPS, value + 1))}
+          hitSlop={stepperSlop}
+          accessibilityRole="button"
+          accessibilityLabel="One rep more"
+          style={buttonStyle}
+        >
+          <Ionicons name="add" size={15} color={p.accent} />
+        </Pressable>
+      </View>
+      {showLabel ? (
+        <Text
+          style={{ fontSize: 9, fontWeight: '800', letterSpacing: 1.1, color: p.dim, marginTop: -3 }}
+        >
+          REPS
+        </Text>
+      ) : null}
     </View>
   );
 }

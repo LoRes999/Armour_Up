@@ -245,9 +245,10 @@ export default function SoloSession() {
                     backgroundColor: logged ? p.accentSoft : p.surfaceAlt,
                   }}
                 >
-                  {/* The set number and the "done" tick are the same control:
-                      it counts the set until the set is logged, then confirms
-                      it. Tapping logs the prescribed numbers, or clears them. */}
+                  {/* An empty box to tick, so it reads as the way to log the
+                      set; it showed the set number, which didn't look tappable
+                      (Ryan's call, 2026-09-14). Tapping logs the prescribed
+                      numbers, or clears them. */}
                   <Pressable
                     onPress={() => store.toggleSetLogged(workout.id, exerciseIndex, setIndex)}
                     accessibilityRole="checkbox"
@@ -262,23 +263,17 @@ export default function SoloSession() {
                   >
                     <View
                       style={{
-                        width: 24,
-                        height: 24,
+                        width: 26,
+                        height: 26,
                         borderRadius: 8,
-                        borderWidth: 1.5,
-                        borderColor: logged ? p.accent : p.border,
+                        borderWidth: 2,
+                        borderColor: logged ? p.accent : p.dim,
                         backgroundColor: logged ? p.accent : 'transparent',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      {logged ? (
-                        <Ionicons name="checkmark" size={15} color={p.onAccent} />
-                      ) : (
-                        <Numeric size={12} color={p.dim}>
-                          {setIndex + 1}
-                        </Numeric>
-                      )}
+                      {logged ? <Ionicons name="checkmark" size={16} color={p.onAccent} /> : null}
                     </View>
                   </Pressable>
 
@@ -292,17 +287,12 @@ export default function SoloSession() {
                     />
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', width: 92 }}>
-                    <Numeric size={14} style={{ minWidth: 26, textAlign: 'center' }}>
-                      {set.loggedReps ?? set.targetReps}
-                    </Numeric>
-                    <RepStepper
-                      value={set.loggedReps ?? set.targetReps}
-                      onChange={(next) =>
-                        store.setLoggedReps(workout.id, exerciseIndex, setIndex, next)
-                      }
-                    />
-                  </View>
+                  <RepStepper
+                    value={set.loggedReps ?? set.targetReps}
+                    onChange={(next) =>
+                      store.setLoggedReps(workout.id, exerciseIndex, setIndex, next)
+                    }
+                  />
                 </View>
               );
             })}

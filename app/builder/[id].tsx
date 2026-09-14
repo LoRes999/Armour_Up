@@ -366,23 +366,11 @@ export default function Builder() {
                           />
                         </View>
 
-                        <View
-                          style={{
-                            width: 92,
-                            height: metrics.hitTarget,
-                            borderRadius: metrics.controlRadius,
-                            backgroundColor: p.surfaceAlt,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 2,
-                          }}
-                        >
-                          <Numeric size={14} style={{ minWidth: 26, textAlign: 'center' }}>
-                            {set.targetReps}
-                          </Numeric>
+                        {/* The column is headed REPS, so the box needs no label. */}
+                        <View style={{ width: 92, alignItems: 'center' }}>
                           <RepStepper
                             value={set.targetReps}
+                            showLabel={false}
                             onChange={(next) => store.setTargetReps(workout.id, position, setIndex, next)}
                           />
                         </View>
