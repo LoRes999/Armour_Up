@@ -74,7 +74,8 @@ export default function InviteClient() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: invited ? 'Invite sent' : 'Invite client',
+          // Nothing is sent: the coach passes the code on (Ryan's wording, 2026-09-13).
+          title: invited ? 'Invitation ready' : 'Invite client',
           headerLeft: () => (
             <Pressable
               onPress={close}
