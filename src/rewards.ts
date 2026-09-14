@@ -14,7 +14,7 @@ export const MILESTONES = [1, 5, 10, 25, 50, 100, 250];
 // MARK: - Weekly streak
 
 /** Local midnight on the Monday of that week — the calendar is Monday-first too. */
-function mondayOf(input: Date): Date {
+export function mondayOf(input: Date): Date {
   const day = new Date(input.getFullYear(), input.getMonth(), input.getDate());
   day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
   return day;

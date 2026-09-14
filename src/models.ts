@@ -87,6 +87,20 @@ export function parseWeightInput(text: string, unit: WeightUnit): number | undef
 }
 
 /**
+ * "Last session 3 days ago", counted in calendar days so a daylight-saving
+ * change cannot tip it. Stands in for the training block, which nothing sets.
+ */
+export function lastSessionLabel(iso: string | undefined, now: Date = new Date()): string {
+  if (!iso) return 'No sessions yet';
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((midnight(now) - midnight(new Date(iso))) / 86_400_000);
+  if (days <= 0) return 'Last session today';
+  if (days === 1) return 'Last session yesterday';
+  if (days < 14) return `Last session ${days} days ago`;
+  return `Last session ${new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+}
+
+/**
  * What the trainer is paying for. The domain type lives here; the mechanism
  * that grants it lives in purchases.ts, so swapping the purchase backend never
  * reaches the model.

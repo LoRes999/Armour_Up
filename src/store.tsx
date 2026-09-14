@@ -46,7 +46,7 @@ import {
 import type { SyncStatus } from './sync/types';
 import { useCloudSync } from './sync/useCloudSync';
 import { useCloud } from './sync/context';
-import { Streak, weekStreak as computeWeekStreak } from './rewards';
+import { Streak, mondayOf, weekStreak as computeWeekStreak } from './rewards';
 
 export type Appearance = 'light' | 'dark' | 'system';
 
@@ -172,7 +172,8 @@ interface StoreValue {
   trainedMovements: (clientId: string) => string[];
   sessionCount: (clientId: string, weeks?: number) => number;
   /** Sets logged in the last seven days. */
-  weekSets: (clientId: string) => number;
+  /** The client page's boxes, worked out from History. `now` is for tests. */
+  clientStats: (clientId: string, now?: Date) => ClientStats;
   /** Consecutive weeks trained, and whether this week still needs a session to keep it. */
   weekStreak: (clientId: string) => Streak;
 
@@ -180,6 +181,16 @@ interface StoreValue {
   cloudActive: boolean;
   /** Whether this phone is online, and what is still waiting to upload. */
   syncStatus: SyncStatus;
+}
+
+export interface ClientStats {
+  /** Finished sessions, as History lists them. */
+  sessions: number;
+  /** Finished out of due over the last four weeks; undefined until one is due. */
+  adherence?: number;
+  /** Sets logged since Monday, the week the streak counts. */
+  weekSets: number;
+  lastSessionAt?: string;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -1043,11 +1054,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return historyFor(clientId).filter((w) => new Date(w.date).getTime() >= cutoff).length;
       },
 
-      weekSets: (clientId) => {
-        const cutoff = Date.now() - 7 * 86_400_000;
-        return historyFor(clientId)
-          .filter((w) => new Date(w.date).getTime() >= cutoff)
-          .reduce((total, w) => total + loggedSets(w), 0);
+      clientStats: (clientId, now = new Date()) => {
+        const history = historyFor(clientId);
+        const today = startOfDay(now);
+        const fourWeeksBack = new Date(now);
+        fourWeeksBack.setDate(fourWeeksBack.getDate() - 28);
+        const windowStart = startOfDay(fourWeeksBack);
+        // Due: a coach session that was sent or run live, from the last four
+        // weeks. An unsent draft is not due, and today's is not missed yet.
+        const due = workoutsFor(clientId).filter((w) => {
+          if (w.loggedBy !== 'trainer') return false;
+          if (w.assignedAt === undefined && w.status !== 'completed') return false;
+          const day = startOfDay(w.date);
+          return day >= windowStart && (w.status === 'completed' ? day <= today : day < today);
+        });
+        const done = due.filter((w) => w.status === 'completed').length;
+        const monday = mondayOf(now).getTime();
+        const newest = [...history].sort((a, b) => b.date.localeCompare(a.date))[0];
+        return {
+          sessions: history.length,
+          adherence: due.length ? Math.round((done / due.length) * 100) : undefined,
+          weekSets: history
+            .filter((w) => new Date(w.date).getTime() >= monday)
+            .reduce((total, w) => total + loggedSets(w), 0),
+          lastSessionAt: newest?.date,
+        };
       },
 
       weekStreak: (clientId) =>

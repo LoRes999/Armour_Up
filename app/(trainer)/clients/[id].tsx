@@ -20,6 +20,7 @@ import {
   formatIn,
   isSolo,
   initialsOf,
+  lastSessionLabel,
   loggedSets,
   totalSets,
 } from '../../../src/models';
@@ -53,6 +54,9 @@ export default function ClientDetail() {
   }
 
   const unit = client.unit;
+  // Worked out from History (Ryan's call, 2026-09-13): the stored block,
+  // adherence and session count never moved or could disagree with History.
+  const stats = store.clientStats(client.id);
   const relativeDay = (iso: string) => {
     const date = new Date(iso);
     const today = new Date().toDateString();
@@ -76,7 +80,7 @@ export default function ClientDetail() {
               {client.name}
             </Text>
             <Text style={{ fontSize: 12, color: p.dim, marginTop: 2 }}>
-              {`${client.blockName} · week ${client.blockWeek} of ${client.blockLength} · ${unit}`}
+              {`${lastSessionLabel(stats.lastSessionAt)} · ${unit}`}
             </Text>
           </View>
         </View>
@@ -151,9 +155,13 @@ export default function ClientDetail() {
         </Card>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <StatTile label="SESSIONS" value={String(client.sessionsCompleted)} />
-          <StatTile label="ADHERENCE" value={`${client.adherence}%`} tint={p.success} />
-          <StatTile label="WEEK SETS" value={String(store.weekSets(client.id))} />
+          <StatTile label="SESSIONS" value={String(stats.sessions)} />
+          <StatTile
+            label="ADHERENCE"
+            value={stats.adherence === undefined ? '—' : `${stats.adherence}%`}
+            tint={stats.adherence === undefined ? undefined : p.success}
+          />
+          <StatTile label="WEEK SETS" value={String(stats.weekSets)} />
         </View>
 
         <SegmentedPicker

@@ -9,6 +9,7 @@ import {
   formatIn,
   formatWeight,
   initialsOf,
+  lastSessionLabel,
   loggedSets,
   makeInviteCode,
   normaliseCode,
@@ -168,6 +169,22 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// Replaces "Onboarding · week 1 of 4", which never moved (Ryan's call, 2026-09-13).
+describe('lastSessionLabel', () => {
+  const now = new Date(2026, 8, 2, 12);
+  const at = (day: number, hour = 9) => new Date(2026, 8, day, hour).toISOString();
+
+  it('says when the last session was', () => {
+    expect(lastSessionLabel(at(2, 7), now)).toBe('Last session today');
+    expect(lastSessionLabel(new Date(2026, 8, 1, 23).toISOString(), now)).toBe('Last session yesterday');
+    expect(lastSessionLabel(new Date(2026, 7, 30, 9).toISOString(), now)).toBe('Last session 3 days ago');
+  });
+
+  it('says so when there is none', () => {
+    expect(lastSessionLabel(undefined, now)).toBe('No sessions yet');
+  });
+});
 
 // The weight keypad took "1e4" as 10,000 and "1,000" as 1, with no top.
 describe('parseWeightInput', () => {

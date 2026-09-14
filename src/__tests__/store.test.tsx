@@ -542,6 +542,75 @@ describe('repeating a session', () => {
 // Renaming used to leave old sessions on the old name, splitting one lift's
 // records and chart in two. A rename carries history along (Ryan's call,
 // 2026-09-13).
+/**
+ * The client page's boxes were stale: ADHERENCE was never worked out (every new
+ * client showed 100% for ever), SESSIONS was a counter that could disagree with
+ * History, and WEEK SETS counted a rolling seven days while the streak counts
+ * from Monday. Ryan chose (2026-09-13) to work them out properly.
+ */
+describe('client stats', () => {
+  // Wednesday 2 September 2026, midday. Monday was 31 August.
+  const now = new Date(2026, 8, 2, 12);
+  const on = (month: number, day: number) => new Date(2026, month, day, 9).toISOString();
+
+  const coachSession = async (result: Store, clientId: string, date: string, send: boolean) => {
+    let id = '';
+    await act(() => {
+      id = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.setWorkoutDate(id, date);
+      result.current.addExercise(id, 'Bench Press');
+    });
+    if (send) {
+      await act(() => {
+        result.current.assignWorkout(id);
+      });
+    }
+    return id;
+  };
+
+  it('counts sessions from History, not a counter', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    await completedSession(result, clientId, 'Bench Press', [60], on(7, 20));
+    const second = await completedSession(result, clientId, 'Bench Press', [60], on(7, 25));
+    await act(() => {
+      result.current.removeWorkout(second);
+    });
+    expect(result.current.clientStats(clientId, now).sessions).toBe(1);
+  });
+
+  it('counts week sets from Monday, like the streak', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    await completedSession(result, clientId, 'Bench Press', [60, 60, 60], on(7, 30)); // Sunday
+    await completedSession(result, clientId, 'Bench Press', [60, 60], on(7, 31)); // Monday
+    expect(result.current.clientStats(clientId, now).weekSets).toBe(2);
+  });
+
+  it('works out adherence from the last four weeks of coach sessions', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    // Run live and finished: due and done.
+    await completedSession(result, clientId, 'Bench Press', [60], on(7, 25));
+    // Sent and never done: due, missed.
+    await coachSession(result, clientId, on(7, 26), true);
+    // A draft never sent, and a miss from July: neither counts.
+    await coachSession(result, clientId, on(7, 27), false);
+    await coachSession(result, clientId, on(6, 1), true);
+    expect(result.current.clientStats(clientId, now).adherence).toBe(50);
+  });
+
+  it('has no adherence until a session is due', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    // Sent, but for tomorrow.
+    await coachSession(result, clientId, on(8, 3), true);
+    expect(result.current.clientStats(clientId, now).adherence).toBeUndefined();
+  });
+});
+
 // Clients see a note from their coach on a workout, but nothing could write
 // one. The builder gets a note box (Ryan's call, 2026-09-13).
 describe('the coach note', () => {
