@@ -55,18 +55,30 @@ export function FinishSetup() {
  */
 export function PreparingProgramme() {
   const p = usePalette();
+  const auth = useAuth();
   const { syncStatus } = useStore();
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: p.background, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 28 }}>
-      {syncStatus.online ? <ActivityIndicator color={p.accent} /> : null}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: p.text, textAlign: 'center' }}>
-        {syncStatus.online ? 'Getting your programme…' : "You're offline."}
-      </Text>
-      {syncStatus.online ? null : (
-        <Text style={{ fontSize: 14, color: p.dim, textAlign: 'center', lineHeight: 20 }}>
-          Connect to the internet once to load your programme. After that it works offline too.
+    <SafeAreaView style={{ flex: 1, backgroundColor: p.background, padding: 28 }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        {syncStatus.online ? <ActivityIndicator color={p.accent} /> : null}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: p.text, textAlign: 'center' }}>
+          {syncStatus.online ? 'Getting your program…' : "You're offline."}
         </Text>
-      )}
+        {syncStatus.online ? null : (
+          <Text style={{ fontSize: 14, color: p.dim, textAlign: 'center', lineHeight: 20 }}>
+            Connect to the internet once to load your program. After that it works offline too.
+          </Text>
+        )}
+      </View>
+      {/* A client whose coach's account is gone waited here with no way out.
+          Always offered, as on "Finish setting up" (Ryan's call, 2026-09-13). */}
+      <Pressable
+        onPress={() => void auth.signOut()}
+        accessibilityRole="button"
+        style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Text style={{ fontSize: 14, fontWeight: '700', color: p.dim }}>Sign out</Text>
+      </Pressable>
     </SafeAreaView>
   );
 }
