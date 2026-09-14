@@ -305,7 +305,7 @@ export default function Join() {
                 {
                   icon: 'shield-checkmark-outline' as const,
                   title: 'Yours to leave with',
-                  detail: 'Export or delete your data at any time from Settings.',
+                  detail: 'Export or delete your data at any time from your Profile.',
                 },
               ].map((bullet) => (
                 <View key={bullet.title} style={{ flexDirection: 'row', gap: 12 }}>

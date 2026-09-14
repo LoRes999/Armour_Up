@@ -59,7 +59,8 @@ export async function exportData(bundle: Omit<ExportBundle, 'exportedAt'>) {
     // Not a second share sheet: one that failed to open would likely fail again.
     notify({
       title: 'Could not export',
-      message: 'Sharing was unavailable. Try again from Settings.',
+      // Coaches have a Settings tab, clients a Profile tab, so name neither.
+      message: 'Sharing was unavailable. Please try again.',
     });
   }
 }
