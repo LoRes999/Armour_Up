@@ -12,7 +12,9 @@ import { planScheduled } from './planner';
  * from sending it again.
  */
 export const sendScheduledNotifications = onSchedule(
-  { schedule: 'every 30 minutes', timeZone: 'UTC', retryCount: 1 },
+  // Five minutes rather than the default one: a 7 AM run claims and sends for
+  // every coach and client due, a batch at a time.
+  { schedule: 'every 30 minutes', timeZone: 'UTC', retryCount: 1, timeoutSeconds: 300 },
   async () => {
     const now = new Date();
     const trainers = await loadDueTrainers(now);
