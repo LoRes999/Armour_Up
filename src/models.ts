@@ -59,6 +59,13 @@ export function formatIn(kg: number, unit: WeightUnit): string {
   return formatWeight(toDisplay(kg, unit));
 }
 
+/** How a run of top sets moved, first to last, in words a screen reader can say. */
+export function trendVerb(first: number, last: number): string {
+  if (last > first) return 'rising to';
+  if (last < first) return 'falling to';
+  return 'holding at';
+}
+
 /**
  * What the trainer is paying for. The domain type lives here; the mechanism
  * that grants it lives in purchases.ts, so swapping the purchase backend never

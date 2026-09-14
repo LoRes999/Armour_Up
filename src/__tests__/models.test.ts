@@ -16,6 +16,7 @@ import {
   toDisplay,
   topLoggedWeight,
   totalSets,
+  trendVerb,
   unitIncrement,
   workoutProgress,
 } from '../models';
@@ -165,6 +166,21 @@ describe('invite codes', () => {
 });
 
 // MARK: - Derived workout helpers
+
+// The chart's screen-reader summary said "rising to" whatever the trend did.
+describe('trendVerb', () => {
+  it('says rising when the last top set is heavier', () => {
+    expect(trendVerb(80, 90)).toBe('rising to');
+  });
+
+  it('says falling when the last top set is lighter', () => {
+    expect(trendVerb(90, 80)).toBe('falling to');
+  });
+
+  it('says holding when nothing moved', () => {
+    expect(trendVerb(80, 80)).toBe('holding at');
+  });
+});
 
 describe('workout helpers', () => {
   it('summarises an even scheme as sets x reps', () => {

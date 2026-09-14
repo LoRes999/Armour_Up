@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { usePalette } from '../theme';
 import { Eyebrow, Numeric } from './ui';
-import { WeightUnit, formatIn } from '../models';
+import { WeightUnit, formatIn, trendVerb } from '../models';
 
 // MARK: - Progress ring
 
@@ -149,7 +149,10 @@ export function TopSetChart({
         accessibilityLabel={`Top set over ${points.length} sessions. ${formatIn(
           points[0].weight,
           unit
-        )} ${unit} on ${shortDate(points[0].date)}, rising to ${formatIn(
+        )} ${unit} on ${shortDate(points[0].date)}, ${trendVerb(
+          points[0].weight,
+          points[points.length - 1].weight
+        )} ${formatIn(
           points[points.length - 1].weight,
           unit
         )} ${unit} on ${shortDate(points[points.length - 1].date)}.`}
