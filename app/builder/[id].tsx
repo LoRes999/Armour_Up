@@ -518,16 +518,26 @@ function MovementPicker({
         </View>
 
         <ScrollView {...keyboardAware} contentContainerStyle={{ padding: metrics.screenPadding, gap: 8 }}>
-          {results.map((movement) => (
-            <Pressable key={movement} onPress={() => onPick(movement)}>
-              <Card
-                radius={14}
-                style={{ paddingHorizontal: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: p.text }}>{movement}</Text>
-              </Card>
-            </Pressable>
-          ))}
+          {/* A search that found nothing used to leave a blank list. Same
+              wording as the Library's search. */}
+          {results.length === 0 ? (
+            <EmptyState
+              icon="search-outline"
+              title="No match"
+              message={`Nothing in the library matches "${search}".`}
+            />
+          ) : (
+            results.map((movement) => (
+              <Pressable key={movement} onPress={() => onPick(movement)}>
+                <Card
+                  radius={14}
+                  style={{ paddingHorizontal: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: p.text }}>{movement}</Text>
+                </Card>
+              </Pressable>
+            ))
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
