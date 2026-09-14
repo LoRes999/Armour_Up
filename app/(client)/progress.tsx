@@ -13,13 +13,18 @@ export default function Progress() {
   const store = useStore();
   const { width } = useWindowDimensions();
   const [movement, setMovement] = useState<string | null>(null);
+  const [showAllRecords, setShowAllRecords] = useState(false);
 
   const client = store.currentClient();
   const unit = client?.unit ?? DEFAULT_UNIT;
-  const movements = client ? store.trainedMovements(client.id).slice(0, 6) : [];
+  // Every trained movement, in the scrolling row: capped at six, a client's
+  // newest record could be on a lift with no chip to chart it (Ryan's call,
+  // 2026-09-13).
+  const movements = client ? store.trainedMovements(client.id) : [];
   const active = movement ?? movements[0];
   const points = client && active ? store.topSetSeries(client.id, active) : [];
-  const records = client ? store.personalRecords(client.id).slice(0, 5) : [];
+  const allRecords = client ? store.personalRecords(client.id) : [];
+  const records = showAllRecords ? allRecords : allRecords.slice(0, 5);
 
   // Card is inset by the screen padding and its own 16pt padding on both sides.
   const chartWidth = width - metrics.screenPadding * 2 - 32;
@@ -125,6 +130,15 @@ export default function Progress() {
                     </View>
                   </Card>
                 ))}
+                {!showAllRecords && allRecords.length > records.length ? (
+                  <Pressable
+                    onPress={() => setShowAllRecords(true)}
+                    accessibilityRole="button"
+                    style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Show all</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </>

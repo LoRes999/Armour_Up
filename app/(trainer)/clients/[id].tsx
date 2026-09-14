@@ -35,6 +35,10 @@ export default function ClientDetail() {
   const auth = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>('program');
+  // The first eight of each, then "See all" (Ryan's call, 2026-09-13): capped,
+  // everything older was out of reach.
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showAllRecords, setShowAllRecords] = useState(false);
 
   const client = store.client(id);
 
@@ -213,28 +217,39 @@ export default function ClientDetail() {
               message="Logged sessions will appear here."
             />
           ) : (
-            store
-              .historyFor(client.id)
-              .slice(0, 8)
-              .map((workout) => (
+            <>
+              {store
+                .historyFor(client.id)
+                .slice(0, showAllHistory ? undefined : 8)
+                .map((workout) => (
+                  <Pressable
+                    key={workout.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(trainer)/clients/session/[id]',
+                        params: { id: workout.id },
+                      })
+                    }
+                  >
+                    <Row
+                      title={workout.name}
+                      subtitle={`${new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${loggedSets(workout)} sets · ${workout.durationMinutes ?? 0} min`}
+                      value={String(loggedSets(workout))}
+                      unit="SETS"
+                      badge={isSolo(workout) ? 'SOLO' : undefined}
+                    />
+                  </Pressable>
+                ))}
+              {!showAllHistory && store.historyFor(client.id).length > 8 ? (
                 <Pressable
-                  key={workout.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(trainer)/clients/session/[id]',
-                      params: { id: workout.id },
-                    })
-                  }
+                  onPress={() => setShowAllHistory(true)}
+                  accessibilityRole="button"
+                  style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Row
-                    title={workout.name}
-                    subtitle={`${new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${loggedSets(workout)} sets · ${workout.durationMinutes ?? 0} min`}
-                    value={String(loggedSets(workout))}
-                    unit="SETS"
-                    badge={isSolo(workout) ? 'SOLO' : undefined}
-                  />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>See all</Text>
                 </Pressable>
-              ))
+              ) : null}
+            </>
           ))}
 
         {tab === 'prs' &&
@@ -245,23 +260,34 @@ export default function ClientDetail() {
               message="Personal bests appear once sets are logged."
             />
           ) : (
-            store
-              .personalRecords(client.id)
-              .slice(0, 8)
-              .map((record) => (
-                <Row
-                  key={record.movementName}
-                  title={record.movementName}
-                  subtitle={
-                    record.previousWeight !== undefined
-                      ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
-                      : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`
-                  }
-                  value={formatIn(record.weight, unit)}
-                  unit={`${unit.toUpperCase()} × ${record.reps}`}
-                  valueTint={p.success}
-                />
-              ))
+            <>
+              {store
+                .personalRecords(client.id)
+                .slice(0, showAllRecords ? undefined : 8)
+                .map((record) => (
+                  <Row
+                    key={record.movementName}
+                    title={record.movementName}
+                    subtitle={
+                      record.previousWeight !== undefined
+                        ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
+                        : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`
+                    }
+                    value={formatIn(record.weight, unit)}
+                    unit={`${unit.toUpperCase()} × ${record.reps}`}
+                    valueTint={p.success}
+                  />
+                ))}
+              {!showAllRecords && store.personalRecords(client.id).length > 8 ? (
+                <Pressable
+                  onPress={() => setShowAllRecords(true)}
+                  accessibilityRole="button"
+                  style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>See all</Text>
+                </Pressable>
+              ) : null}
+            </>
           ))}
 
         <PrimaryButton
