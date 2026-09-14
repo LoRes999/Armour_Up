@@ -137,19 +137,23 @@ export default function SettingsScreen() {
           }
           size={46}
         />
+        {/* Details only, so no chevron: it promised a page that didn't exist
+            (Ryan's call, 2026-09-14). */}
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: p.text }}>
             {store.role === 'trainer' ? coachName : (client?.name ?? 'Client')}
           </Text>
+          {cloud && auth.email ? (
+            <Text style={{ fontSize: 12, color: p.dim }} numberOfLines={1}>
+              {auth.email}
+            </Text>
+          ) : null}
           <Text style={{ fontSize: 12, color: p.dim }}>
-            {cloud && auth.email
-              ? auth.email
-              : store.role === 'trainer'
-                ? plural(store.clients.length, 'client')
-                : `Coached by ${coachName}`}
+            {store.role === 'trainer'
+              ? plural(store.clients.length, 'client')
+              : `Coached by ${coachName}`}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={p.dim} />
       </Card>
 
       {cloud && store.role ? (
