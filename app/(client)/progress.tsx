@@ -52,6 +52,10 @@ export default function Progress() {
                     <Pressable
                       key={name}
                       onPress={() => setMovement(name)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      // 34pt chips: the slop makes the target 44pt on a phone.
+                      hitSlop={5}
                       style={{
                         height: 34,
                         paddingHorizontal: 13,

@@ -18,6 +18,9 @@ import { dismissKeyboard, keyboardUp } from '../keyboard';
 import { Card, DashedButton, Eyebrow, PrimaryButton } from './ui';
 import { DAY_LABEL_MAX, DayType } from '../models';
 
+/** Read aloud for each swatch, in palette order (theme.ts tagColors). */
+const SWATCH_NAMES = ['Amber', 'Coral', 'Green', 'Blue', 'Purple', 'Gold', 'Teal', 'Pink'];
+
 /**
  * The trainer's own vocabulary for training days. Nothing here assumes a
  * push/pull split — a name, a label short enough for a calendar cell, and a
@@ -254,11 +257,14 @@ export function DayTypeEditor({
             </View>
 
             <View style={{ gap: 8 }}>
-              <Eyebrow>COLOUR</Eyebrow>
+              <Eyebrow>COLOR</Eyebrow>
               <View style={{ flexDirection: 'row', gap: 9, flexWrap: 'wrap' }}>
                 {p.tagColors.map((color, index) => (
                   <Pressable
                     key={color}
+                    accessibilityRole="radio"
+                    accessibilityLabel={SWATCH_NAMES[index] ?? `Color ${index + 1}`}
+                    accessibilityState={{ checked: index === colorIndex }}
                     onPress={() => setColorIndex(index)}
                     style={{
                       width: 34,

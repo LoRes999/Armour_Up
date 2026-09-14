@@ -499,12 +499,14 @@ export function WeightStepper({
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
                   onPress={() => setEditing(false)}
+                  accessibilityRole="button"
                   style={{ flex: 1, minHeight: 46, borderRadius: metrics.controlRadius, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontWeight: '700', color: p.dim }}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={commit}
+                  accessibilityRole="button"
                   style={{ flex: 1, minHeight: 46, borderRadius: metrics.controlRadius, backgroundColor: p.accent, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontWeight: '800', color: p.onAccent }}>Set</Text>

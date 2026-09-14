@@ -157,7 +157,13 @@ export default function Paywall() {
           {PLANS.map((option) => {
             const active = option.id === plan;
             return (
-              <Pressable key={option.id} onPress={() => setPlan(option.id)}>
+              <Pressable
+                key={option.id}
+                onPress={() => setPlan(option.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={`${option.title}, ${option.priceLabel} ${option.periodLabel}`}
+              >
                 <Card
                   radius={16}
                   style={{
@@ -223,6 +229,8 @@ export default function Paywall() {
               that follows the same visual contract. See the README. */}
           <Pressable
             onPress={pending ? undefined : buy}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: pending }}
             style={{
               minHeight: 50,
               borderRadius: 12,
@@ -293,6 +301,8 @@ export default function Paywall() {
 
           <Pressable
             onPress={pending ? undefined : restore}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: pending }}
             style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>Restore purchases</Text>

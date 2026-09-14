@@ -260,6 +260,10 @@ export default function CustomMovementForm() {
                     />
                     <Pressable
                       onPress={() => setPhotoUris((current) => current.filter((_, i) => i !== index))}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove photo"
+                      // A 26pt badge; the slop makes the target 44pt on a phone.
+                      hitSlop={9}
                       style={{
                         position: 'absolute',
                         top: -6,
