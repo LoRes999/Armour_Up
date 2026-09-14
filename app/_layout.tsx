@@ -126,7 +126,7 @@ function Root() {
         />
         <Stack.Screen
           name="delete-account"
-          options={{ headerShown: true, title: 'Delete Account', headerBackTitle: 'Back' }}
+          options={{ headerShown: true, title: 'Delete account', headerBackTitle: 'Back' }}
         />
       </Stack>
     </CelebrationProvider>
