@@ -7,6 +7,7 @@ import {
   type TrainerContext,
   assignedMessage,
   finishedMessage,
+  leftMessage,
   planScheduled,
   recordsSet,
 } from '../planner';
@@ -74,6 +75,40 @@ const person = (uid: string, over: Partial<Recipient> = {}): Recipient => ({
   timeZone: NY,
   prefs: DEFAULT_PREFS,
   ...over,
+});
+
+/** Ryan decided (2026-09-13) a coach hears when a client deletes their account; wording his. */
+describe('a client deleting their account', () => {
+  const noon = new Date('2026-09-11T16:00:00.000Z'); // 12:00 in New York
+
+  it('tells their coach', () => {
+    expect(
+      leftMessage({ recipient: person('u-ryan'), clientName: 'Marcus Webb', clientId: 'c-marcus', now: noon })
+    ).toEqual({
+      uid: 'u-ryan',
+      kind: 'left',
+      group: 'activity',
+      title: 'Marcus deleted their account',
+      body: 'Their programs and history have been removed.',
+      route: '/(trainer)/clients',
+      dedupeKey: 'left:c-marcus',
+    });
+  });
+
+  it('keeps quiet at night, and when activity alerts are off', () => {
+    const night = new Date('2026-09-12T03:00:00.000Z'); // 23:00 in New York
+    expect(
+      leftMessage({ recipient: person('u-ryan'), clientName: 'Marcus Webb', clientId: 'c-marcus', now: night })
+    ).toBeNull();
+    expect(
+      leftMessage({
+        recipient: person('u-ryan', { prefs: { ...DEFAULT_PREFS, activity: false } }),
+        clientName: 'Marcus Webb',
+        clientId: 'c-marcus',
+        now: noon,
+      })
+    ).toBeNull();
+  });
 });
 
 const coach = (clients: TrainerContext['clients'], account = person('u-ryan')): TrainerContext => ({

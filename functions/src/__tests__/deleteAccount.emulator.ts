@@ -135,6 +135,25 @@ describe('a client deleting their account', () => {
     await expect(accounts.deleteAccount.run(asJordan)).resolves.toEqual({ ok: true });
   });
 
+  it('tells their coach they deleted their account', async () => {
+    // A time zone where it is daytime now, so quiet hours don't hold the alert back.
+    const hourIn = (zone: string) =>
+      Number(new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+    const zone =
+      ['UTC', 'Asia/Tokyo', 'America/Los_Angeles', 'Europe/London', 'Asia/Kolkata', 'Australia/Sydney', 'America/New_York'].find(
+        (candidate) => hourIn(candidate) >= 8 && hourIn(candidate) < 20
+      ) ?? 'UTC';
+    await admin.db.doc(`users/${COACH}`).set({ role: 'trainer', displayName: 'Sam Coach', timezone: zone });
+    await admin.db.doc(`notificationLog/${COACH}_left:${JORDAN}`).delete();
+
+    await accounts.deleteAccount.run(asJordan);
+
+    // Logged for the coach; with no phone on record nothing is actually sent.
+    expect(await read(`notificationLog/${COACH}_left:${JORDAN}`)).toEqual(
+      expect.objectContaining({ uid: COACH, kind: 'left' })
+    );
+  });
+
   it("leaves the coach's other clients alone", async () => {
     await accounts.deleteAccount.run(asJordan);
 

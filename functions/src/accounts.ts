@@ -2,8 +2,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/https';
 import { CODE_LENGTH, UNITS, type WeightUnit, normaliseCode } from '../../src/models';
 import { SEED_DAY_TYPES } from '../../src/sampleData';
+import { logger } from 'firebase-functions';
 import { SERVER, auth, db, requireUser, text, timeZoneOr } from './admin';
-import { DEFAULT_PREFS } from './planner';
+import { deliver } from './deliver';
+import { recipient } from './load';
+import { DEFAULT_PREFS, leftMessage } from './planner';
 
 /**
  * Accounts and roles. The role lives in the sign-in token (a custom claim),
@@ -180,6 +183,21 @@ export const deleteAccount = onCall(async (request) => {
     if (typeof code === 'string' && code) writer.delete(db.collection('inviteCodes').doc(code));
     if (client.exists) writer.set(client.ref, tombstone());
     await writer.close();
+
+    // Tell their coach (Ryan's call, and his words). The name comes from the
+    // record read above, before it became a tombstone; a retried deletion
+    // finds only the tombstone and stays quiet. A notification that fails must
+    // never stop the deletion itself.
+    const name = client.get('name');
+    if (typeof name === 'string' && name) {
+      try {
+        const coach = await recipient(trainerId);
+        const message = coach ? leftMessage({ recipient: coach, clientName: name, clientId, now: new Date() }) : null;
+        if (message) await deliver(db, [message]);
+      } catch (error) {
+        logger.warn('left notification not sent', { trainerId, clientId, error });
+      }
+    }
   }
 
   if (role === 'trainer') {

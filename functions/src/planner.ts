@@ -39,6 +39,7 @@ export type MessageKind =
   | 'inactive'
   | 'recap'
   | 'assigned'
+  | 'left'
   | 'finished'
   | 'joined';
 
@@ -397,5 +398,26 @@ export function joinedMessage(input: { recipient: Recipient; client: Client; now
     body: 'They used their code and can see their programme now.',
     route: `/(trainer)/clients/${client.id}`,
     dedupeKey: `joined:${client.id}`,
+  };
+}
+
+/** A client deleted their account. Wording Ryan's, 2026-09-13. */
+export function leftMessage(input: {
+  recipient: Recipient;
+  clientName: string;
+  clientId: string;
+  now: Date;
+}): Message | null {
+  const { recipient, clientName, clientId, now } = input;
+  if (!recipient.prefs.activity || isQuiet(wallClock(now, recipient.timeZone).hour)) return null;
+  return {
+    uid: recipient.uid,
+    kind: 'left',
+    group: 'activity',
+    title: `${firstName(clientName)} deleted their account`,
+    body: 'Their programs and history have been removed.',
+    // Their own page went with them.
+    route: '/(trainer)/clients',
+    dedupeKey: `left:${clientId}`,
   };
 }
