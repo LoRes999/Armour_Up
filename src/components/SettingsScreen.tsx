@@ -11,7 +11,6 @@ import { metrics, tagColor, usePalette } from '../theme';
 import { Avatar, Card, Eyebrow, SegmentedPicker, Title } from './ui';
 import { DayType, UNITS, WeightUnit, initialsOf, plural, unitName } from '../models';
 import { DayTypeEditor } from './DayTypePicker';
-import { TRAINER_NAME } from '../sampleData';
 import { useAuth, useCoachName } from '../auth';
 import { NOTIFICATION_GROUPS, prefLabels } from '../notificationPrefs';
 import type { SyncStatus } from '../sync/types';
@@ -369,7 +368,7 @@ export default function SettingsScreen() {
             label={
               store.role === 'trainer'
                 ? 'What clients can see'
-                : `What ${TRAINER_NAME.split(' ')[0]} can see`
+                : `What ${coachName.split(' ')[0]} can see`
             }
             onPress={showVisibility}
           />
