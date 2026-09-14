@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
-import { StoreProvider, useStore } from '../store';
+import { StoreProvider, isMissedSession, useStore } from '../store';
 import { WeightUnit, toCanonical, toDisplay } from '../models';
 
 /**
@@ -86,6 +86,55 @@ const completedSession = async (
  * nothing. Ryan chose a real undo (2026-09-13): the builder keeps a copy when it
  * opens and Cancel puts the workout back exactly as it was.
  */
+/**
+ * A session not finished on its day could never be logged afterwards: it fell
+ * off Today, and its Program row opened the builder. Ryan decided (2026-09-13)
+ * a past, unfinished session is marked "Missed" and can still be logged; this
+ * is the rule for which sessions those are.
+ */
+describe('a missed session', () => {
+  const sessionOn = async (result: Store, clientId: string, date: string) => {
+    let id = '';
+    await act(() => {
+      id = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.setWorkoutDate(id, date);
+      result.current.addExercise(id, 'Bench Press');
+    });
+    return result.current.workout(id);
+  };
+
+  it('is an unfinished coach session from before today', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    const twoDaysAgo = await sessionOn(result, clientId, daysAgo(2));
+
+    expect(twoDaysAgo && isMissedSession(twoDaysAgo)).toBe(true);
+  });
+
+  it("is not today's or a future one", async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    const today = await sessionOn(result, clientId, daysAgo(0));
+    const inTwoDays = await sessionOn(result, clientId, daysAgo(-2));
+
+    expect(today && isMissedSession(today)).toBe(false);
+    expect(inTwoDays && isMissedSession(inTwoDays)).toBe(false);
+  });
+
+  it('is not a finished one, or a solo session of the client’s own', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    const finishedId = await completedSession(result, clientId, 'Bench Press', [60], daysAgo(3));
+    const finished = result.current.workout(finishedId);
+    const solo = finished && { ...finished, status: 'scheduled' as const, loggedBy: 'client' as const };
+
+    expect(finished && isMissedSession(finished)).toBe(false);
+    expect(solo && isMissedSession(solo)).toBe(false);
+  });
+});
+
 describe('restoring a workout', () => {
   it('puts it back exactly as the copy had it', async () => {
     const { result } = await mount();

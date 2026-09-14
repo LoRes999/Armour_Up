@@ -190,6 +190,14 @@ const startOfDay = (input: string | Date) => {
 const isToday = (iso: string) => startOfDay(iso) === startOfDay(new Date());
 
 /**
+ * A coach session from before today that was never finished. It used to be
+ * stranded: off Today, and its Program row opened the builder. Ryan decided
+ * (2026-09-13) such a session is marked "Missed" and can still be logged.
+ */
+export const isMissedSession = (w: Workout, now: Date = new Date()) =>
+  w.loggedBy === 'trainer' && w.status !== 'completed' && startOfDay(w.date) < startOfDay(now);
+
+/**
  * One shared store. The trainer's writes and the client's reads hit the same
  * objects, so logging a set updates the client's Today screen live.
  * In-memory only: nothing survives a reload.

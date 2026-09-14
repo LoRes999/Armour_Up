@@ -15,6 +15,7 @@ export function confirm({
   cancelLabel = 'Cancel',
   destructive = false,
   onConfirm,
+  onCancel,
 }: {
   title: string;
   message?: string;
@@ -22,18 +23,22 @@ export function confirm({
   cancelLabel?: string;
   destructive?: boolean;
   onConfirm: () => void;
+  /** For a choice between two actions, where the second button does something too. */
+  onCancel?: () => void;
 }) {
   if (Platform.OS === 'web') {
     // The browser's own dialog is plain, but it is real, and the labels below
     // are already carried in the title and message.
     const text = message ? `${title}\n\n${message}` : title;
+    if (typeof window === 'undefined') return;
     // eslint-disable-next-line no-alert
-    if (typeof window !== 'undefined' && window.confirm(text)) onConfirm();
+    if (window.confirm(text)) onConfirm();
+    else onCancel?.();
     return;
   }
 
   Alert.alert(title, message, [
-    { text: cancelLabel, style: 'cancel' },
+    { text: cancelLabel, style: 'cancel', onPress: onCancel },
     { text: confirmLabel, style: destructive ? 'destructive' : 'default', onPress: onConfirm },
   ]);
 }

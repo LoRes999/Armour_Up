@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useStore } from '../../../src/store';
+import { isMissedSession, useStore } from '../../../src/store';
 import { metrics, usePalette } from '../../../src/theme';
 import {
   Avatar,
@@ -171,12 +171,28 @@ export default function ClientDetail() {
               <Pressable
                 key={workout.id}
                 onPress={() =>
-                  router.push({ pathname: '/builder/[id]', params: { id: workout.id } })
+                  // A missed session can still be logged (Ryan's call, 2026-09-13):
+                  // it used to open only the builder, so it could never be finished.
+                  isMissedSession(workout)
+                    ? confirm({
+                        title: 'Missed session',
+                        message: `${workout.name}, ${relativeDay(workout.date)}.`,
+                        confirmLabel: 'Log it now',
+                        cancelLabel: 'Edit',
+                        onConfirm: () =>
+                          router.push({
+                            pathname: '/session/[id]',
+                            params: { id: workout.id, clientId: client.id },
+                          }),
+                        onCancel: () =>
+                          router.push({ pathname: '/builder/[id]', params: { id: workout.id } }),
+                      })
+                    : router.push({ pathname: '/builder/[id]', params: { id: workout.id } })
                 }
               >
                 <Row
                   title={workout.name}
-                  subtitle={`${relativeDay(workout.date)} · ${workout.exercises.length} ${
+                  subtitle={`${isMissedSession(workout) ? 'Missed · ' : ''}${relativeDay(workout.date)} · ${workout.exercises.length} ${
                     workout.exercises.length === 1 ? 'exercise' : 'exercises'
                   } · ${totalSets(workout)} ${totalSets(workout) === 1 ? 'set' : 'sets'}`}
                   value={new Date(workout.date).toLocaleTimeString(undefined, {
