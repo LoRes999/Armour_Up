@@ -43,6 +43,13 @@
       "expo-asset",
       "expo-font",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E8A33D"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can illustrate your own movements.",

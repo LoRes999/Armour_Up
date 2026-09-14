@@ -117,7 +117,7 @@ const BARBELL = [
  *                   Android masks an adaptive icon hard, so its foreground has
  *                   to sit inside the middle 66%.
  */
-function render(size, background, inset = 1) {
+function render(size, background, inset = 1, mark = ACCENT) {
   const rgba = Buffer.alloc(size * size * 4);
   const step = 1 / SAMPLES;
   const offset = step / 2;
@@ -150,12 +150,12 @@ function render(size, background, inset = 1) {
       if (background) {
         // Opaque: composite the mark onto the ground.
         for (let c = 0; c < 3; c += 1) {
-          rgba[at + c] = Math.round(background[c] + (ACCENT[c] - background[c]) * coverage);
+          rgba[at + c] = Math.round(background[c] + (mark[c] - background[c]) * coverage);
         }
         rgba[at + 3] = 255;
       } else {
         // Transparent: the mark carries its own alpha.
-        for (let c = 0; c < 3; c += 1) rgba[at + c] = ACCENT[c];
+        for (let c = 0; c < 3; c += 1) rgba[at + c] = mark[c];
         rgba[at + 3] = Math.round(coverage * 255);
       }
     }
@@ -172,11 +172,15 @@ const targets = [
   { file: 'adaptive-icon.png', size: 1024, background: null, inset: 0.8 },
   { file: 'splash-icon.png', size: 512, background: null, inset: 0.9 },
   { file: 'favicon.png', size: 48, background: GROUND, inset: 1 },
+  // Android draws a notification icon as a silhouette from its alpha alone: a
+  // coloured, opaque one shows as a blank square. White on transparent; the
+  // tint comes from the expo-notifications plugin's colour in app.json.
+  { file: 'notification-icon.png', size: 96, background: null, inset: 0.9, mark: [0xff, 0xff, 0xff] },
 ];
 
 mkdirSync(OUT, { recursive: true });
-for (const { file, size, background, inset } of targets) {
-  const png = render(size, background, inset);
+for (const { file, size, background, inset, mark } of targets) {
+  const png = render(size, background, inset, mark);
   writeFileSync(join(OUT, file), png);
   console.log(`${file.padEnd(20)} ${size}x${size}  ${(png.length / 1024).toFixed(1)} KB`);
 }
