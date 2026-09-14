@@ -1,16 +1,14 @@
 /**
- * Generates the app icon, Android adaptive foreground, splash mark and web
- * favicon.
+ * Generates the app icon, Android adaptive foreground, splash mark, web
+ * favicon and Android notification icon.
  *
- * These are placeholders. They exist because the stores will not accept a build
- * without them and the project had no assets/ directory at all — not because
- * anybody designed them. Replace the PNGs whenever real artwork turns up; no
- * config has to change.
+ * The mark is ArmourUp Fitness's logo, chosen by Ryan (2026-09-14): a
+ * minimalist dumbbell drawn as white outlines, on black for the icon. Replace
+ * the PNGs whenever final artwork turns up; no config has to change.
  *
  * Written against Node's built-in zlib rather than sharp or a canvas library,
  * so `node scripts/make-assets.mjs` works on a clean checkout with nothing
- * installed. It draws a barbell in the app's own palette (src/theme.ts) so the
- * placeholder at least belongs to the same product.
+ * installed.
  *
  *   node scripts/make-assets.mjs
  */
@@ -22,9 +20,8 @@ import { fileURLToPath } from 'node:url';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets');
 
-// From src/theme.ts — darkPalette.background and darkPalette.accent.
-const GROUND = [0x17, 0x12, 0x14];
-const ACCENT = [0xe8, 0xa3, 0x3d];
+const BLACK = [0x11, 0x11, 0x11];
+const WHITE = [0xff, 0xff, 0xff];
 
 /** Each pixel is sampled this many times per axis, which is what smooths edges. */
 const SAMPLES = 3;
@@ -91,6 +88,7 @@ function encodePng(width, height, rgba) {
  * arcs in one expression.
  */
 function inRoundedRect(px, py, [x0, y0, x1, y1, r]) {
+  if (x1 <= x0 || y1 <= y0) return false;
   const cx = Math.min(Math.max(px, x0 + r), x1 - r);
   const cy = Math.min(Math.max(py, y0 + r), y1 - r);
   const dx = px - cx;
@@ -98,17 +96,33 @@ function inRoundedRect(px, py, [x0, y0, x1, y1, r]) {
   return dx * dx + dy * dy <= r * r;
 }
 
+/** The same rectangle, grown (or, with a negative amount, shrunk) on every side. */
+function grow([x0, y0, x1, y1, r], by) {
+  return [x0 - by, y0 - by, x1 + by, y1 + by, Math.max(0, r + by)];
+}
+
 /**
- * A barbell, in fractions of the canvas: the bar end to end, a heavy plate
- * inboard on each side and a lighter one outboard.
+ * On a shape's outline: within half a stroke of its edge. Shapes that touch
+ * share the line where they meet, so it is drawn once, not twice.
  */
-const BARBELL = [
-  [0.14, 0.472, 0.86, 0.528, 0.028], // bar
-  [0.17, 0.394, 0.232, 0.606, 0.026], // outer plate, left
-  [0.768, 0.394, 0.83, 0.606, 0.026], // outer plate, right
-  [0.256, 0.322, 0.328, 0.678, 0.032], // inner plate, left
-  [0.672, 0.322, 0.744, 0.678, 0.032], // inner plate, right
+function onOutline(px, py, shape, half) {
+  return inRoundedRect(px, py, grow(shape, half)) && !inRoundedRect(px, py, grow(shape, -half));
+}
+
+/**
+ * A dumbbell, in fractions of the canvas: a short handle, a heavy plate on
+ * each side of it and a lighter plate outboard of those.
+ */
+const DUMBBELL = [
+  [0.3, 0.464, 0.7, 0.536, 0.021], // handle
+  [0.186, 0.286, 0.3, 0.714, 0.036], // inner plate, left
+  [0.7, 0.286, 0.814, 0.714, 0.036], // inner plate, right
+  [0.114, 0.371, 0.186, 0.629, 0.029], // outer plate, left
+  [0.814, 0.371, 0.886, 0.629, 0.029], // outer plate, right
 ];
+
+/** Line width, as a fraction of the canvas before the inset is applied. */
+const STROKE = 0.0286;
 
 /**
  * @param size       pixels square
@@ -116,16 +130,19 @@ const BARBELL = [
  * @param inset      the mark occupies this fraction of the canvas, centred.
  *                   Android masks an adaptive icon hard, so its foreground has
  *                   to sit inside the middle 66%.
+ * @param stroke     line width as a fraction of the mark; small images get a
+ *                   heavier one so the outline survives
  */
-function render(size, background, inset = 1, mark = ACCENT) {
+function render(size, background, inset = 1, stroke = STROKE) {
   const rgba = Buffer.alloc(size * size * 4);
   const step = 1 / SAMPLES;
   const offset = step / 2;
   const scale = inset;
   const shift = (1 - inset) / 2;
+  const half = (stroke * scale * size) / 2;
 
   // Pre-scale the shape into canvas coordinates once rather than per sample.
-  const shapes = BARBELL.map(([x0, y0, x1, y1, r]) => [
+  const shapes = DUMBBELL.map(([x0, y0, x1, y1, r]) => [
     (x0 * scale + shift) * size,
     (y0 * scale + shift) * size,
     (x1 * scale + shift) * size,
@@ -140,7 +157,7 @@ function render(size, background, inset = 1, mark = ACCENT) {
         for (let sx = 0; sx < SAMPLES; sx += 1) {
           const px = x + offset + sx * step;
           const py = y + offset + sy * step;
-          if (shapes.some((shape) => inRoundedRect(px, py, shape))) hits += 1;
+          if (shapes.some((shape) => onOutline(px, py, shape, half))) hits += 1;
         }
       }
 
@@ -150,12 +167,12 @@ function render(size, background, inset = 1, mark = ACCENT) {
       if (background) {
         // Opaque: composite the mark onto the ground.
         for (let c = 0; c < 3; c += 1) {
-          rgba[at + c] = Math.round(background[c] + (mark[c] - background[c]) * coverage);
+          rgba[at + c] = Math.round(background[c] + (WHITE[c] - background[c]) * coverage);
         }
         rgba[at + 3] = 255;
       } else {
         // Transparent: the mark carries its own alpha.
-        for (let c = 0; c < 3; c += 1) rgba[at + c] = mark[c];
+        for (let c = 0; c < 3; c += 1) rgba[at + c] = WHITE[c];
         rgba[at + 3] = Math.round(coverage * 255);
       }
     }
@@ -167,20 +184,21 @@ function render(size, background, inset = 1, mark = ACCENT) {
 const targets = [
   // Opaque. iOS rejects an icon with an alpha channel, and this one is the
   // store listing as well as the home screen.
-  { file: 'icon.png', size: 1024, background: GROUND, inset: 0.95 },
-  // Foreground only; app.json supplies the background colour behind it.
-  { file: 'adaptive-icon.png', size: 1024, background: null, inset: 0.8 },
+  { file: 'icon.png', size: 1024, background: BLACK, inset: 0.8 },
+  // Foreground only; app.json supplies the black behind it.
+  { file: 'adaptive-icon.png', size: 1024, background: null, inset: 0.66 },
+  // White on transparent, over the splash background colour in app.json.
   { file: 'splash-icon.png', size: 512, background: null, inset: 0.9 },
-  { file: 'favicon.png', size: 48, background: GROUND, inset: 1 },
+  { file: 'favicon.png', size: 48, background: BLACK, inset: 0.9, stroke: 0.05 },
   // Android draws a notification icon as a silhouette from its alpha alone: a
-  // coloured, opaque one shows as a blank square. White on transparent; the
-  // tint comes from the expo-notifications plugin's colour in app.json.
-  { file: 'notification-icon.png', size: 96, background: null, inset: 0.9, mark: [0xff, 0xff, 0xff] },
+  // coloured, opaque one shows as a blank square. The tint comes from the
+  // expo-notifications plugin's colour in app.json.
+  { file: 'notification-icon.png', size: 96, background: null, inset: 0.9, stroke: 0.04 },
 ];
 
 mkdirSync(OUT, { recursive: true });
-for (const { file, size, background, inset, mark } of targets) {
-  const png = render(size, background, inset, mark);
+for (const { file, size, background, inset, stroke } of targets) {
+  const png = render(size, background, inset, stroke);
   writeFileSync(join(OUT, file), png);
-  console.log(`${file.padEnd(20)} ${size}x${size}  ${(png.length / 1024).toFixed(1)} KB`);
+  console.log(`${file.padEnd(22)} ${size}x${size}  ${(png.length / 1024).toFixed(1)} KB`);
 }
