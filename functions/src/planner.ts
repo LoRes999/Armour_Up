@@ -146,12 +146,30 @@ function inWeek(workouts: readonly Workout[], monday: string, timeZone: string):
 
 // MARK: - Scheduled messages
 
-export function planScheduled(now: Date, trainers: readonly TrainerContext[]): Message[] {
+/**
+ * Every scheduled message due now. Each coach and each client is planned on
+ * their own: the rules don't check a document's shape, and one malformed
+ * workout used to throw here and stop the run for everyone, every run. A
+ * person whose data can't be planned is reported through `onError` and skipped.
+ */
+export function planScheduled(
+  now: Date,
+  trainers: readonly TrainerContext[],
+  onError: (error: unknown, uid: string) => void = () => {}
+): Message[] {
   const messages: Message[] = [];
+  const plan = (uid: string, work: () => Message[]) => {
+    try {
+      messages.push(...work());
+    } catch (error) {
+      onError(error, uid);
+    }
+  };
   for (const trainer of trainers) {
-    messages.push(...forTrainer(now, trainer));
+    plan(trainer.account.uid, () => forTrainer(now, trainer));
     for (const context of trainer.clients) {
-      if (context.account) messages.push(...forClient(now, context, context.account, trainer.name));
+      const account = context.account;
+      if (account) plan(account.uid, () => forClient(now, context, account, trainer.name));
     }
   }
   return messages;

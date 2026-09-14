@@ -160,6 +160,47 @@ describe('local time', () => {
   });
 });
 
+/**
+ * The rules don't check a document's shape, so one malformed workout — a
+ * session with no exercises list, or a finished one with no date — threw inside
+ * the planner and stopped that run for every coach and client, every run,
+ * until someone fixed the data. Each person is now planned on their own.
+ */
+describe('a malformed workout', () => {
+  const healthy = coach([
+    { client: client(), account: person('u-marcus'), workouts: [workout({ date: '2026-09-11T22:00:00.000Z' })] },
+  ]);
+
+  it("stops only that person's messages, not everyone else's", () => {
+    const noExercises = {
+      id: 'w-broken',
+      clientId: 'c-priya',
+      name: 'Lower Body B',
+      date: '2026-09-11T23:00:00.000Z',
+      status: 'scheduled',
+      loggedBy: 'trainer',
+    } as unknown as Workout;
+    const broken = coach(
+      [{ client: client({ id: 'c-priya', name: 'Priya Nair' }), account: person('u-priya'), workouts: [noExercises] }],
+      person('u-sam')
+    );
+
+    const messages = planScheduled(nyMorning(11), [broken, healthy]);
+
+    expect(messages).toContainEqual(expect.objectContaining({ uid: 'u-marcus', kind: 'reminder' }));
+  });
+
+  it('does not stop the run when a finished session has no date', () => {
+    const noDate = { ...done('2026-09-01T12:00:00.000Z'), date: undefined } as unknown as Workout;
+    const broken = coach(
+      [{ client: client({ id: 'c-priya', name: 'Priya Nair' }), account: person('u-priya'), workouts: [noDate, done('2026-09-02T12:00:00.000Z')] }],
+      person('u-sam')
+    );
+
+    expect(() => planScheduled(nyMorning(11, 9), [broken, healthy])).not.toThrow();
+  });
+});
+
 describe('workout reminders', () => {
   const today = workout({ date: '2026-09-11T22:00:00.000Z' });
   const trainer = coach([{ client: client(), account: person('u-marcus'), workouts: [today] }]);

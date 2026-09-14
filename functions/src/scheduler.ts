@@ -18,7 +18,10 @@ export const sendScheduledNotifications = onSchedule(
   async () => {
     const now = new Date();
     const trainers = await loadDueTrainers(now);
-    const messages = planScheduled(now, trainers);
+    // One person's malformed data skips only their messages, and says so here.
+    const messages = planScheduled(now, trainers, (error, uid) =>
+      logger.warn('scheduled notifications skipped for one person', { uid, error })
+    );
     const { sent, skipped } = await deliver(db, messages);
     logger.info('scheduled notifications', {
       coaches: trainers.length,
