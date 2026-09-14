@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Client, CustomMovement, DayType, Role, Subscription, Workout } from './models';
 import type { Appearance } from './store';
 import type { Outbox } from './sync/types';
+import { notify } from './confirm';
 
 /**
  * The whole store, written to disk as one JSON document.
@@ -160,13 +161,23 @@ export async function loadSnapshot(): Promise<Snapshot | null> {
 let pending: Snapshot | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 
+// One notice a session: every change after a failed save fails the same way.
+let warnedUnsaved = false;
+
 async function write(snapshot: Snapshot): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(snapshot));
   } catch {
-    // Out of space, or storage unavailable. There is nowhere useful to report
-    // this from — it fires on a background write, not on anything the user
-    // just did — and losing the write is better than crashing on top of them.
+    // Out of space, or storage unavailable. Losing the write is better than
+    // crashing, but it used to be lost without a word, and so was every save
+    // after it: in a browser, a few photos were enough to fill the storage.
+    if (warnedUnsaved) return;
+    warnedUnsaved = true;
+    notify({
+      title: "Your changes aren't being saved",
+      message:
+        "There's no storage space left for the app. Free some up (removing movement photos helps) and your next change will save.",
+    });
   }
 }
 

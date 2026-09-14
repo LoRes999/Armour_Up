@@ -11,7 +11,8 @@ import { Directory, File, Paths } from 'expo-file-system';
  * with the app.
  *
  * In a browser there is no such folder: the picker returns the image itself as
- * a data URI, and that is stored unchanged.
+ * a data URI, which goes into the saved store. Full-size, a few of them filled
+ * the browser's storage, so they are scaled down first.
  */
 
 const FOLDER = 'movement-photos';
@@ -35,7 +36,7 @@ function copiedName(uri: string): string | null {
  * later is better than one that is refused now.
  */
 export async function keepPhoto(pickedUri: string): Promise<string> {
-  if (!enabled) return pickedUri;
+  if (!enabled) return shrinkForWeb(pickedUri);
   try {
     const dir = folder();
     dir.create({ intermediates: true, idempotent: true });
@@ -46,6 +47,36 @@ export async function keepPhoto(pickedUri: string): Promise<string> {
     return target.uri;
   } catch {
     return pickedUri;
+  }
+}
+
+/** Longest edge of a photo kept in a browser: plenty for a 104pt thumbnail and a detail view. */
+const WEB_MAX_EDGE = 1024;
+
+/**
+ * A browser photo, redrawn at most WEB_MAX_EDGE on its longest side as a JPEG.
+ * The original is kept if anything fails, or if shrinking would not help.
+ */
+async function shrinkForWeb(uri: string): Promise<string> {
+  if (typeof document === 'undefined' || typeof Image === 'undefined') return uri;
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = reject;
+      element.src = uri;
+    });
+    const scale = Math.min(1, WEB_MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(image.naturalWidth * scale);
+    canvas.height = Math.round(image.naturalHeight * scale);
+    const context = canvas.getContext('2d');
+    if (!context) return uri;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const shrunk = canvas.toDataURL('image/jpeg', 0.7);
+    return shrunk.length < uri.length ? shrunk : uri;
+  } catch {
+    return uri;
   }
 }
 
