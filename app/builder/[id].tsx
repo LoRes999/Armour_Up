@@ -193,6 +193,14 @@ export default function Builder() {
         <TextInput
           value={workout.name}
           onChangeText={(text) => store.renameWorkout(workout.id, text)}
+          // A name emptied and left that way used to be saved blank, a nameless
+          // card on both phones. It gets its name back.
+          onBlur={() => {
+            if (!workout.name.trim()) {
+              store.renameWorkout(workout.id, original?.name.trim() || 'Workout');
+            }
+          }}
+          maxLength={60}
           placeholder="Workout name"
           placeholderTextColor={p.dim}
           style={{ fontSize: 26, fontWeight: '800', letterSpacing: -0.8, color: p.text }}
