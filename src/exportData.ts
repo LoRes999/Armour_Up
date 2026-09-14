@@ -39,7 +39,9 @@ export async function exportData(bundle: Omit<ExportBundle, 'exportedAt'>) {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    // Not straight away: Safari can still be resolving the download when
+    // click() returns, and revoking the URL then cancels it.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
     return;
   }
 
