@@ -138,6 +138,8 @@ interface StoreValue {
   /** Copies a completed session forward as a solo one the client owns. */
   repeatWorkout: (sourceWorkoutId: string) => string | undefined;
   removeWorkout: (workoutId: string) => void;
+  /** Puts a workout back exactly as a copy of it had it: the builder's Cancel. */
+  restoreWorkout: (snapshot: Workout) => void;
   /**
    * Stamps the moment the trainer sent it. True the first time only, so
    * re-saving an edit does not celebrate again. An empty workout is never sent.
@@ -581,6 +583,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         mutate(workoutId, (w) => {
           w.exercises.splice(exercise, 1);
         }),
+
+      restoreWorkout: (snapshot) =>
+        setWorkouts((current) => current.map((w) => (w.id === snapshot.id ? snapshot : w))),
 
       logSet: (workoutId, exercise, set, weight, reps) =>
         mutate(workoutId, (w) => {

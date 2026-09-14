@@ -17,7 +17,7 @@ import { confirm } from './confirm';
  * Returns `leave`: wrap a deliberate exit (Save, Delete) in it so that exit is
  * not questioned. Those change the store first, so there is nothing to discard.
  */
-export function useConfirmDiscard(dirty: boolean, message: string) {
+export function useConfirmDiscard(dirty: boolean, message: string, onDiscard?: () => void) {
   const navigation = useNavigation();
   const leaving = useRef(false);
 
@@ -34,7 +34,11 @@ export function useConfirmDiscard(dirty: boolean, message: string) {
       confirmLabel: 'Discard',
       cancelLabel: 'Keep editing',
       destructive: true,
-      onConfirm: () => navigation.dispatch(data.action),
+      // A screen that saves as it goes (the workout builder) undoes here first.
+      onConfirm: () => {
+        onDiscard?.();
+        navigation.dispatch(data.action);
+      },
     });
   });
 

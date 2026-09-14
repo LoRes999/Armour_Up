@@ -27,6 +27,8 @@ import {
   totalSets,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
+import { sameValue } from '../../src/sync/diff';
+import { useConfirmDiscard } from '../../src/useConfirmDiscard';
 import { useCelebration } from '../../src/celebration/CelebrationProvider';
 
 export default function Builder() {
@@ -34,7 +36,8 @@ export default function Builder() {
   const router = useRouter();
   const store = useStore();
   const { celebrate } = useCelebration();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `fresh`: "New workout" created this one on the way in.
+  const { id, fresh } = useLocalSearchParams<{ id: string; fresh?: string }>();
 
   const workout = store.workout(id);
   const client = workout ? store.client(workout.clientId) : undefined;
@@ -45,6 +48,23 @@ export default function Builder() {
   const [pickingDay, setPickingDay] = useState(false);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(trainer)/clients'));
+
+  // Every edit saves as it is made, so Cancel undoes from a copy kept on the
+  // way in (Ryan's call, 2026-09-13): it puts the workout back, or removes one
+  // "New workout" made for this visit. A swipe down or Android back after a
+  // change asks first, like every other form.
+  const [original] = useState(() => store.workout(id));
+  const isNew = fresh === '1';
+  const dirty = workout !== undefined && !sameValue(workout, original);
+  const undo = () => {
+    if (isNew) store.removeWorkout(id);
+    else if (original) store.restoreWorkout(original);
+  };
+  const leave = useConfirmDiscard(
+    dirty,
+    isNew ? 'This workout will not be added.' : 'Your edits to this workout will be lost.',
+    undo
+  );
 
   if (!workout) {
     // The header has to be configured here too. The root layout sets
@@ -90,7 +110,7 @@ export default function Builder() {
    */
   const assign = () => {
     const firstTime = store.assignWorkout(workout.id);
-    close();
+    leave(close);
     if (firstTime && client) {
       celebrate({
         kind: 'assigned',
@@ -124,7 +144,7 @@ export default function Builder() {
       destructive: true,
       onConfirm: () => {
         const doomed = workout.id;
-        close();
+        leave(close);
         store.removeWorkout(doomed);
       },
     });
@@ -148,12 +168,21 @@ export default function Builder() {
           headerShown: true,
           title: 'Workout Builder',
           headerLeft: () => (
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+            <Pressable
+              onPress={() =>
+                leave(() => {
+                  undo();
+                  close();
+                })
+              }
+              hitSlop={8}
+              accessibilityRole="button"
+            >
               <Text style={{ color: p.accent, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={() => leave(close)} hitSlop={8} accessibilityRole="button">
               <Text style={{ color: p.accent, fontSize: 16, fontWeight: '700' }}>Save</Text>
             </Pressable>
           ),

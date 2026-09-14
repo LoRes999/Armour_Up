@@ -81,6 +81,36 @@ const completedSession = async (
  * deleting the whole workout. Ryan chose a "Remove exercise" button in the
  * expanded card (2026-09-13); this is the store action behind it.
  */
+/**
+ * The builder saves every edit as it is made, so its Cancel button undid
+ * nothing. Ryan chose a real undo (2026-09-13): the builder keeps a copy when it
+ * opens and Cancel puts the workout back exactly as it was.
+ */
+describe('restoring a workout', () => {
+  it('puts it back exactly as the copy had it', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+    const original = result.current.workout(workoutId);
+
+    await act(() => {
+      result.current.renameWorkout(workoutId, 'Push Day B');
+      result.current.addExercise(workoutId, 'Deadlift');
+    });
+    await act(() => {
+      if (original) result.current.restoreWorkout(original);
+    });
+
+    expect(result.current.workout(workoutId)).toEqual(original);
+  });
+});
+
 describe('removing an exercise', () => {
   it('takes out just that exercise and keeps the rest in order', async () => {
     const { result } = await mount();

@@ -253,7 +253,7 @@ export default function ClientDetail() {
           icon="add"
           onPress={() => {
             const workoutId = store.createWorkout(client.id);
-            router.push({ pathname: '/builder/[id]', params: { id: workoutId } });
+            router.push({ pathname: '/builder/[id]', params: { id: workoutId, fresh: '1' } });
           }}
         />
       </ScrollView>
