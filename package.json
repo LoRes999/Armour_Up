@@ -13,7 +13,8 @@
     "emulators": "firebase emulators:start --project demo-strength-coach",
     "deploy": "firebase deploy --project live --only firestore,functions",
     "build:assets": "node scripts/make-assets.mjs",
-    "build:legal": "node scripts/build-legal.mjs"
+    "build:legal": "node scripts/build-legal.mjs",
+    "build:site": "node scripts/build-site.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
