@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { metrics, usePalette } from '../theme';
 import { Card, Pill, Title } from './ui';
-import { PLANS } from '../purchases';
+import { Plan, purchases } from '../purchases';
 import { PlanId } from '../models';
 import { notify } from '../confirm';
 import { openHosted } from '../legal';
@@ -29,6 +29,20 @@ export default function Paywall() {
   const router = useRouter();
   const store = useStore();
   const [plan, setPlan] = useState<PlanId>('annual');
+  // What the store sells, in the buyer's own currency; null while loading.
+  const [plans, setPlans] = useState<Plan[] | null>(null);
+  const [plansFailed, setPlansFailed] = useState(false);
+  const loadPlans = useCallback(() => {
+    setPlansFailed(false);
+    purchases.getOfferings().then(
+      (loaded) => {
+        setPlans(loaded);
+        setPlansFailed(loaded.length === 0);
+      },
+      () => setPlansFailed(true)
+    );
+  }, []);
+  useEffect(loadPlans, [loadPlans]);
   // With accounts, a coach reaches this screen already signed in: the invite
   // code button and "Sign back in as coach" are for the signed-out paywall.
   const auth = useAuth();
@@ -39,13 +53,23 @@ export default function Paywall() {
   const owned = store.subscription?.status === 'active';
   const pending = store.purchasePending;
   const wording = storeWording(Platform.OS);
-  const selected = PLANS.find((option) => option.id === plan) ?? PLANS[0];
+  const selected = plans?.find((option) => option.id === plan) ?? plans?.[0];
+
+  // A coach who becomes subscribed while here (bought, redeemed a code, or
+  // signed in on a new phone with a subscription) goes straight in.
+  const active = store.subscription?.status === 'active';
+  useEffect(() => {
+    if (signedInCoach && active) store.signInAsTrainer();
+    // store is rebuilt every render; only these two matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedInCoach, active]);
 
   // No navigation on success in either of these: the root gate re-renders and
   // redirects itself. Both sign in as a trainer, because a client never buys —
   // they arrive with a code — so owning a subscription is what a coach is.
   const buy = async () => {
-    if (await store.purchasePlan(plan)) store.signInAsTrainer();
+    if (!selected) return;
+    if (await store.purchasePlan(selected.id)) store.signInAsTrainer();
   };
 
   /** The published copy if one is configured, otherwise the version in the app. */
@@ -154,7 +178,23 @@ export default function Paywall() {
         </View>
 
         <View style={{ gap: 9 }}>
-          {PLANS.map((option) => {
+          {plansFailed ? (
+            <View style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 14, color: p.dim, textAlign: 'center' }}>
+                Couldn't load the plans. Check your connection.
+              </Text>
+              <Pressable
+                onPress={loadPlans}
+                accessibilityRole="button"
+                style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: p.accent }}>Try again</Text>
+              </Pressable>
+            </View>
+          ) : !plans ? (
+            <ActivityIndicator color={p.accent} style={{ paddingVertical: 24 }} />
+          ) : null}
+          {(plans ?? []).map((option) => {
             const active = option.id === plan;
             return (
               <Pressable
@@ -228,13 +268,14 @@ export default function Paywall() {
           {/* Apple's own button needs a dev build; in Expo Go this is a stand-in
               that follows the same visual contract. See the README. */}
           <Pressable
-            onPress={pending ? undefined : buy}
+            onPress={pending || !selected ? undefined : buy}
             accessibilityRole="button"
-            accessibilityState={{ disabled: pending }}
+            accessibilityState={{ disabled: pending || !selected }}
             style={{
               minHeight: 50,
               borderRadius: 12,
               backgroundColor: p.text,
+              opacity: selected ? 1 : 0.5,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
@@ -251,7 +292,7 @@ export default function Paywall() {
               asks, naming the store this phone bills through (Ryan's call,
               2026-09-13). The links were flat text once; they open now. */}
           <Text style={{ fontSize: 11, color: p.dim, textAlign: 'center', lineHeight: 17 }}>
-            {`${selected.priceLabel} ${selected.periodLabel}, billed through ${wording.store}. Renews automatically until you cancel in ${wording.cancelWhere}. By continuing you agree to our `}
+            {`${selected ? `${selected.priceLabel} ${selected.periodLabel}, billed` : 'Billed'} through ${wording.store}. Renews automatically until you cancel in ${wording.cancelWhere}. By continuing you agree to our `}
             <Text
               onPress={() => openLegal('terms')}
               accessibilityRole="link"
@@ -307,6 +348,26 @@ export default function Paywall() {
           >
             <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>Restore purchases</Text>
           </Pressable>
+
+          {/* Offer codes Ryan hands out through Apple's own system (his call,
+              2026-09-14). Only where the store can take them: not the web or
+              Expo Go. A redeemed code arrives through PurchasesBridge. */}
+          {purchases.redeemCode ? (
+            <Pressable
+              onPress={() =>
+                void purchases.redeemCode?.().catch(() =>
+                  notify({
+                    title: "Couldn't open code redemption",
+                    message: 'Try again, or redeem the code in the App Store app.',
+                  })
+                )
+              }
+              accessibilityRole="button"
+              style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }}>Redeem a code</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* The "INVITED BY A TRAINER?" divider and its link lived here; the

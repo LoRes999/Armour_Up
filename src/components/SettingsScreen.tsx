@@ -16,6 +16,7 @@ import { NOTIFICATION_GROUPS, prefLabels } from '../notificationPrefs';
 import type { SyncStatus } from '../sync/types';
 import { confirm, notify } from '../confirm';
 import { exportData } from '../exportData';
+import { purchases } from '../purchases';
 
 /** Shared by the trainer's Settings tab and the client's Profile tab. */
 /**
@@ -234,11 +235,15 @@ export default function SettingsScreen() {
               }}
             >
               <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
-                {store.subscription?.plan === 'annual' ? 'Annual plan' : 'Monthly plan'}
+                {store.subscription?.plan === 'annual'
+                  ? 'Annual plan'
+                  : store.subscription?.plan === 'complimentary'
+                    ? 'Complimentary access'
+                    : 'Monthly plan'}
               </Text>
               <Text style={{ fontSize: 12, color: p.dim }}>
-                {store.subscription
-                  ? `Renews ${new Date(store.subscription.renewsAt).toLocaleDateString(undefined, {
+                {store.subscription?.renewsAt
+                  ? `${store.subscription.willRenew === false ? 'Ends' : 'Renews'} ${new Date(store.subscription.renewsAt).toLocaleDateString(undefined, {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
@@ -246,6 +251,19 @@ export default function SettingsScreen() {
                   : '—'}
               </Text>
             </View>
+            {/* Apple's own screen for changing plan or cancelling. Real builds only. */}
+            {purchases.manage ? (
+              <>
+                <Divider />
+                <Pressable accessibilityRole="button" onPress={() => void purchases.manage?.()}>
+                  <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
+                      Manage subscription
+                    </Text>
+                  </View>
+                </Pressable>
+              </>
+            ) : null}
             <Divider />
             <Pressable accessibilityRole="button" onPress={() => store.restorePurchase()}>
               <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>

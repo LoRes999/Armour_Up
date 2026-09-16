@@ -130,9 +130,12 @@ export type PlanId = 'monthly' | 'annual';
 
 export interface Subscription {
   status: 'active' | 'expired';
-  plan: PlanId;
-  /** ISO. Cosmetic while purchases are mocked — nothing expires on a timer. */
+  /** 'complimentary': access granted in RevenueCat rather than bought. */
+  plan: PlanId | 'complimentary';
+  /** ISO. Empty when the access has no end date. */
   renewsAt: string;
+  /** False once cancelled: it runs until renewsAt and then ends. */
+  willRenew?: boolean;
 }
 
 /** No O, 0, I or 1 — a code has to survive being read aloud in a gym. */

@@ -8,6 +8,7 @@ import { StoreProvider, useStore } from '../src/store';
 import { AuthProvider, useAuth } from '../src/auth';
 import { CloudBridge } from '../src/sync/CloudBridge';
 import { NotificationsBridge } from '../src/components/NotificationsBridge';
+import { PurchasesBridge } from '../src/components/PurchasesBridge';
 import { useIsDark, usePalette } from '../src/theme';
 import { CelebrationProvider } from '../src/celebration/CelebrationProvider';
 
@@ -64,6 +65,7 @@ function Root() {
     <CelebrationProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <NotificationsBridge />
+      <PurchasesBridge />
       <Stack
         screenOptions={{
           headerShown: false,

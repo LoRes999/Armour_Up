@@ -1,22 +1,22 @@
+import { Linking, Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Purchases, { type CustomerInfo, type PurchasesPackage } from 'react-native-purchases';
 import { PlanId, Subscription } from './models';
+import { planIdFor, plansFromPackages, subscriptionFrom } from './purchasesMapping';
 
 /**
  * Everything the app knows about buying a subscription, behind one interface.
  *
- * The shape deliberately mirrors RevenueCat's own — getOfferings /
- * purchasePackage / restorePurchases / getCustomerInfo — so replacing the mock
- * below with `react-native-purchases` is a change to this file and nothing
- * else. No screen imports the SDK, and no screen knows a mock exists.
- *
- * The mock is here because real StoreKit needs a native build, an Apple
- * Developer account and products configured in App Store Connect. None of that
- * runs in Expo Go or in a browser, which is where this app is reviewed.
+ * Two implementations. Real purchases go through RevenueCat, which talks to
+ * the App Store (and later Google Play). The pretend service stays for the
+ * places a store cannot run: the web preview, Expo Go and tests. No screen
+ * imports the SDK, and no screen knows which one it has.
  */
 
 export interface Plan {
   id: PlanId;
   title: string;
-  /** '$29' — already localised by the store in a real implementation. */
+  /** '$29.00', localised by the store. */
   priceLabel: string;
   periodLabel: string;
   footnote: string;
@@ -33,18 +33,30 @@ export interface PurchaseService {
   /** Last known value, synchronously, so the first paint never flashes a paywall. */
   cached(): Subscription | null;
   /**
-   * Adopt a subscription restored from disk, so cached() and the store agree
-   * about whether this person has paid. A real implementation can ignore it —
-   * it asks the store rather than trusting anything we saved locally.
+   * Pretend service only. Adopt a subscription restored from disk, so cached()
+   * and the store agree about whether this person has paid.
    */
   hydrate?(subscription: Subscription | null): void;
-  /**
-   * Mock only. A real implementation omits it, and the Settings screen renders
-   * its row only when this is present.
-   */
+  /** Pretend service only, and only in development: ends the subscription. */
   debugExpire?(): void;
+  /**
+   * Real stores only. Purchases belong to the account, not the phone: logging
+   * in with the account's id makes a coach's subscription follow them to a new
+   * phone, and keeps another coach on this phone from inheriting it.
+   */
+  logIn?(uid: string): Promise<Subscription | null>;
+  logOut?(): Promise<void>;
+  /** Real stores only. The latest subscription, from the store's own cache when offline. */
+  refresh?(): Promise<Subscription | null>;
+  /** Real stores only. Every change the store reports: renewals, cancellations, redeemed codes. */
+  onChange?(listener: (subscription: Subscription | null) => void): () => void;
+  /** iPhone only: Apple's sheet for redeeming an offer code. */
+  redeemCode?(): Promise<void>;
+  /** Real stores only: the system's own screen for managing subscriptions. */
+  manage?(): Promise<void>;
 }
 
+/** What the pretend service sells. Real prices come from the store. */
 export const PLANS: Plan[] = [
   {
     id: 'annual',
@@ -74,7 +86,7 @@ function createMockPurchaseService(): PurchaseService {
   const grant = (plan: PlanId): Subscription => {
     const renewsAt = new Date();
     renewsAt.setMonth(renewsAt.getMonth() + (plan === 'annual' ? 12 : 1));
-    return { status: 'active', plan, renewsAt: renewsAt.toISOString() };
+    return { status: 'active', plan, renewsAt: renewsAt.toISOString(), willRenew: true };
   };
 
   return {
@@ -93,15 +105,8 @@ function createMockPurchaseService(): PurchaseService {
     async restore() {
       await wait(400);
       // Returns what is actually owned, which on a fresh install is nothing.
-      //
-      // This used to grant a subscription unconditionally, because nothing was
-      // persisted and an unconditional restore was the only way back into the
-      // trainer app after a reload. The store is saved to disk now, so that
-      // reason is gone — and shipping the old behaviour would have given the
-      // paid app away to anyone who tapped Restore.
-      //
-      // Still a mock: purchase() below grants without charging anyone. A real
-      // implementation asks StoreKit what this Apple ID owns.
+      // Granting unconditionally would give the paid app away to anyone who
+      // tapped Restore.
       return current;
     },
 
@@ -119,4 +124,132 @@ function createMockPurchaseService(): PurchaseService {
   };
 }
 
-export const purchases: PurchaseService = createMockPurchaseService();
+/**
+ * RevenueCat, with the public SDK key for this platform. A build without a key
+ * can sell nothing: every call rejects and the paywall says the plans could not
+ * load. It never falls back to the pretend service, which would give the app
+ * away.
+ */
+function createStorePurchaseService(apiKey: string): PurchaseService {
+  const configured = apiKey !== '';
+  if (configured) Purchases.configure({ apiKey });
+
+  let current: Subscription | null = null;
+  let packages = new Map<PlanId, PurchasesPackage>();
+
+  const ready = () => {
+    if (!configured) throw new Error('Purchases are not set up in this build.');
+  };
+  const adopt = (info: CustomerInfo) => {
+    current = subscriptionFrom(info);
+    return current;
+  };
+
+  const service: PurchaseService = {
+    async getOfferings() {
+      ready();
+      const available = (await Purchases.getOfferings()).current?.availablePackages ?? [];
+      packages = new Map();
+      for (const pkg of available) {
+        const id = planIdFor(pkg.product.identifier);
+        if (id) packages.set(id, pkg);
+      }
+      return plansFromPackages(available);
+    },
+
+    async purchase(planId) {
+      ready();
+      if (!packages.has(planId)) await service.getOfferings();
+      const chosen = packages.get(planId);
+      if (!chosen) throw new Error('That plan is not available.');
+      // Rejects when the person cancels the sheet, which the store treats as
+      // "stay on the paywall".
+      const { customerInfo } = await Purchases.purchasePackage(chosen);
+      const subscription = adopt(customerInfo);
+      if (subscription?.status !== 'active') throw new Error('The purchase did not complete.');
+      return subscription;
+    },
+
+    async restore() {
+      ready();
+      return adopt(await Purchases.restorePurchases());
+    },
+
+    cached() {
+      return current;
+    },
+
+    async logIn(uid) {
+      ready();
+      const { customerInfo } = await Purchases.logIn(uid);
+      return adopt(customerInfo);
+    },
+
+    async logOut() {
+      current = null;
+      if (!configured) return;
+      try {
+        await Purchases.logOut();
+      } catch {
+        // Already anonymous: nobody was logged in to log out.
+      }
+    },
+
+    async refresh() {
+      ready();
+      return adopt(await Purchases.getCustomerInfo());
+    },
+
+    onChange(listener) {
+      if (!configured) return () => undefined;
+      const handle = (info: CustomerInfo) => listener(adopt(info));
+      Purchases.addCustomerInfoUpdateListener(handle);
+      return () => {
+        Purchases.removeCustomerInfoUpdateListener(handle);
+      };
+    },
+
+    redeemCode:
+      Platform.OS === 'ios'
+        ? async () => {
+            ready();
+            await Purchases.presentCodeRedemptionSheet();
+          }
+        : undefined,
+
+    async manage() {
+      if (configured) {
+        try {
+          await Purchases.showManageSubscriptions();
+          return;
+        } catch {
+          // Fall through to the store's web page.
+        }
+      }
+      await Linking.openURL(
+        Platform.OS === 'ios'
+          ? 'https://apps.apple.com/account/subscriptions'
+          : 'https://play.google.com/store/account/subscriptions'
+      );
+    },
+  };
+
+  return service;
+}
+
+/**
+ * Real purchases wherever a store can take them: an EAS build on a phone. The
+ * pretend service stays for the web (a preview), Expo Go (no native purchases
+ * module) and tests.
+ */
+const usesStore =
+  Platform.OS !== 'web' &&
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient &&
+  process.env.NODE_ENV !== 'test';
+
+// Spelled out in full: Expo inlines EXPO_PUBLIC_* only where it is written so.
+const STORE_KEY = Platform.OS === 'ios' ? (process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '') : '';
+
+export const purchases: PurchaseService = usesStore
+  ? createStorePurchaseService(STORE_KEY)
+  : createMockPurchaseService();

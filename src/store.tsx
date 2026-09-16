@@ -78,6 +78,8 @@ interface StoreValue {
   purchasePending: boolean;
   purchasePlan: (plan: PlanId) => Promise<boolean>;
   restorePurchase: () => Promise<boolean>;
+  /** What the App Store reports, via PurchasesBridge: a sign-in, renewal, cancellation or code. */
+  applySubscription: (subscription: Subscription | null) => void;
   /** Mock only — absent once a real purchase backend is wired in. */
   expireSubscriptionForDemo?: () => void;
   setAppearance: (value: Appearance) => void;
@@ -446,6 +448,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setPurchasePending(false);
         }
       },
+
+      applySubscription: (next) => setSubscription(next),
 
       expireSubscriptionForDemo: purchases.debugExpire
         ? () => {
