@@ -196,9 +196,9 @@ export const redeemInvite = onCall(async (request) => {
 
 /**
  * Deletes the account and its data, as App Store guideline 5.1.1(v) requires.
- * A client takes their record and sessions with them. A coach takes their
- * whole roster; their clients' accounts are disabled, since there is no longer
- * a programme for them to see.
+ * A client takes their record and sessions with them, and their coach is told.
+ * A coach takes their whole roster, and their clients' accounts are deleted
+ * with it, since there is no longer a program for them to see.
  */
 export const deleteAccount = onCall(async (request) => {
   const user = requireUser(request);
