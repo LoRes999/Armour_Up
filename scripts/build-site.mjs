@@ -103,7 +103,7 @@ function page(title, content) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escape(title)} · ${APP}</title>
+<title>${title === APP ? escape(APP) : `${escape(title)} · ${APP}`}</title>
 <link rel="icon" href="favicon.png">
 <style>${STYLE}</style>
 </head>

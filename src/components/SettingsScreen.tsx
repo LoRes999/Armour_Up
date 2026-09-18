@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Constants from 'expo-constants';
-import { openHosted } from '../legal';
+import { openHosted, openSupport } from '../legal';
 import type { LegalDocId } from '../legalContent';
 import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -381,6 +381,12 @@ export default function SettingsScreen() {
           </Text>
         </Section>
       ) : null}
+
+      <Section title="HELP">
+        <Card radius={15}>
+          <NavRow label="Contact support" last onPress={() => void openSupport()} />
+        </Card>
+      </Section>
 
       <Section title="PRIVACY & DATA">
         <Card radius={15}>
