@@ -36,4 +36,11 @@ describe.each(['production', 'preview'])('the %s build', (profile) => {
   it('carries the whole web config', () => {
     for (const key of WEB_CONFIG) expect(env[`EXPO_PUBLIC_FIREBASE_${key}`]).toBeTruthy();
   });
+
+  // Without it createStorePurchaseService throws on every call, so the paywall
+  // would load no plans and Subscribe would fail: a coach could not pay at all.
+  // The public SDK key is meant to ship inside the app; the secret is the .p8.
+  it('can reach RevenueCat', () => {
+    expect(env.EXPO_PUBLIC_REVENUECAT_IOS_KEY).toMatch(/^appl_/);
+  });
 });
