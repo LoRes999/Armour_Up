@@ -495,7 +495,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "Questions about this policy: ryanarmour@gmail.com",
+            "text": "Questions about this policy: henryarmour1@gmail.com",
             "bold": false
           }
         ]
@@ -774,7 +774,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         "kind": "p",
         "spans": [
           {
-            "text": "ryanarmour@gmail.com",
+            "text": "henryarmour1@gmail.com",
             "bold": false
           }
         ]

@@ -102,4 +102,4 @@ above will change.
 
 ## Contact
 
-Questions about this policy: ryanarmour@gmail.com
+Questions about this policy: henryarmour1@gmail.com

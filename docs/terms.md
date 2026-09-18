@@ -83,4 +83,4 @@ date. Continuing to use the app after a change means you accept it.
 
 ## 10. Contact
 
-ryanarmour@gmail.com
+henryarmour1@gmail.com
