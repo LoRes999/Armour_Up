@@ -54,4 +54,4 @@ strength,coach,personal trainer,workout log,gym,training,clients,program,powerli
 - **Category:** Health & Fitness (primary). Secondary: Sports, or leave empty.
 - **Copyright:** 2026 followed by your legal name, as shown on your developer account.
 - **License Agreement (EULA):** Apple's standard. The Terms of Use link above covers ours.
-- **Age rating:** answer "None" or "No" throughout; expected 4+.
+- **Age rating:** 9+ (answered 2026-09-18; see docs/review-notes.md).

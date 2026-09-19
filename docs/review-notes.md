@@ -49,12 +49,25 @@ needs a ready-made coach and client.
 - [ ] In RevenueCat → Customers, find the demo coach → **Grant promotional entitlement** →
       `coach`, lifetime.
 - [ ] A sandbox tester (App Store Connect → Users and Access → Sandbox → Test Accounts).
-- [ ] Privacy Policy and Support URLs in the listing (see `docs/app-store-listing.md`).
-- [ ] App Privacy, answered for the cloud version: **data is collected** and linked to the person,
-      used only for app functionality, and never for tracking or advertising.
-      - Contact info: name and email address.
-      - User content: training data (workouts, sets, notes, custom movements).
-      - Identifiers: the account's user ID.
-      - Purchases: subscription status (through RevenueCat and Apple).
-      - Push tokens are used only to deliver notifications.
-      Check each answer against `docs/privacy.md` before submitting.
+- [ ] Screenshots: iPhone 6.5" (1242 × 2688 or 1284 × 2778), three to ten of them.
+- [x] Privacy Policy and Support URLs in the listing (see `docs/app-store-listing.md`).
+
+## Already answered in App Store Connect (2026-09-18)
+
+Recorded here so a later version can answer the same way, and so the answers can be checked
+against `docs/privacy.md`.
+
+- **Content rights:** no third-party content.
+- **Age rating: 9+.** Everything "none" or "no", except **Health or Wellness Topics: yes** — the
+  app is about training, and saying otherwise would be false. That single yes is what lifts it
+  above 4+.
+  - Notably no: user-generated content, social media, messaging and chat, advertising,
+    unrestricted web access. A coach's note reaches one client, which is not broad distribution.
+- **App Privacy: data is collected**, all of it linked to the person, all of it used only for
+  **App Functionality**, and **none of it for tracking**.
+  - Contact Info: Name, Email Address.
+  - Health & Fitness: Fitness (the training log).
+  - User Content: Other User Content (notes, custom movements).
+  - Identifiers: User ID, and Device ID for the push token.
+  - Purchases: Purchase History (through RevenueCat and Apple).
+  - Photos stay on the phone, so they are not declared.
