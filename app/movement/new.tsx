@@ -20,7 +20,9 @@ import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/c
 import { confirm, notify } from '../../src/confirm';
 import { useConfirmDiscard } from '../../src/useConfirmDiscard';
 import { useClose } from '../../src/useClose';
-import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
+import { discardPhotos, keepPhoto, photoName, photoSource } from '../../src/photoStorage';
+import { deleteMovementPhotos } from '../../src/photoCloud';
+import { useCloud } from '../../src/sync/context';
 
 /**
  * The trainer writes a movement of their own. Whatever they save here is
@@ -31,6 +33,8 @@ export default function CustomMovementForm() {
   const router = useRouter();
   const close = useClose('/(trainer)/library');
   const store = useStore();
+  const cloudScope = useCloud()?.scope ?? null;
+  const trainerId = cloudScope?.role === 'trainer' ? cloudScope.trainerId : null;
   const { edit: rawEdit } = useLocalSearchParams<{ edit?: string | string[] }>();
   const edit = routeParam(rawEdit);
 
@@ -117,16 +121,25 @@ export default function CustomMovementForm() {
     if (!trimmed || nameTaken) return;
     finished.current = true;
     // Photos taken off the movement, or added and then removed again.
-    discardPhotos(
-      [...(existing?.photoUris ?? []), ...added.current].filter((uri) => !photoUris.includes(uri))
+    const dropped = [...(existing?.photoUris ?? []), ...added.current].filter(
+      (uri) => !photoUris.includes(uri)
     );
+    discardPhotos(dropped);
     if (existing) {
+      // The names that are left. A dropped photo goes from the movement in
+      // the same write, so a client stops seeing it whether or not deleting
+      // the object itself gets through; the trigger clears the rest.
+      const kept = new Set(photoUris.map(photoName).filter((name): name is string => name !== null));
+      const photos = (existing.photos ?? []).filter((name) => kept.has(name));
+      const gone = (existing.photos ?? []).filter((name) => !kept.has(name));
+      if (gone.length > 0 && trainerId) void deleteMovementPhotos(trainerId, existing.id, gone);
       store.updateCustomMovement(existing.id, {
         name: trimmed,
         description: description.trim(),
         cues,
         muscles,
         photoUris,
+        photos,
       });
     } else {
       store.addCustomMovement({

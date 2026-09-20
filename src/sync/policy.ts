@@ -43,8 +43,12 @@ export const SERVER_FALLBACKS: Readonly<Record<CollectionName, Readonly<Record<s
 
 /**
  * Meaningful on this phone only. Never uploaded, and kept from the local copy
- * when the server's version arrives. Movement photos are files on the
- * trainer's phone until photo upload exists.
+ * when the server's version arrives.
+ *
+ * A movement's photoUris are this phone's own files; the paths mean nothing
+ * anywhere else. The photos themselves do reach a client now, through the
+ * movement's `photos` — object names in Cloud Storage, which is an ordinary
+ * synced field and so is deliberately absent from this list.
  */
 export const LOCAL_ONLY: Readonly<Record<CollectionName, Readonly<Record<string, unknown>>>> = {
   clients: {},

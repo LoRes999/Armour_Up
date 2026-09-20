@@ -122,23 +122,39 @@ describe('a trainer phone', () => {
     ).toEqual([]);
   });
 
-  it('keeps movement photos, which are files on this phone, out of the upload', () => {
-    const movement: CustomMovement = {
-      id: 'mv-1',
-      name: 'Landmine Press',
-      description: '',
-      cues: [],
-      muscles: [],
-      photoUris: ['file:///photos/1.jpg'],
-    };
-    const [entry] = planUploads(trainer, data(), data({ customMovements: [movement] }));
+  const movement = (over: Partial<CustomMovement> = {}): CustomMovement => ({
+    id: 'mv-1',
+    name: 'Landmine Press',
+    description: '',
+    cues: [],
+    muscles: [],
+    photoUris: ['file:///photos/1.jpg'],
+    ...over,
+  });
+
+  it("keeps this phone's own copies of a photo out of the upload", () => {
+    const [entry] = planUploads(trainer, data(), data({ customMovements: [movement()] }));
     expect(entry.collection).toBe('movements');
     expect(entry.fields).not.toHaveProperty('photoUris');
 
-    const withPhotoOnly = { ...movement, photoUris: [...movement.photoUris, 'file:///photos/2.jpg'] };
+    // The paths mean nothing on another phone, so changing them is not a
+    // change worth sending. What a client sees is `photos`, below.
+    const another = movement({ photoUris: ['file:///photos/1.jpg', 'file:///photos/2.jpg'] });
     expect(
-      planUploads(trainer, data({ customMovements: [movement] }), data({ customMovements: [withPhotoOnly] }))
+      planUploads(trainer, data({ customMovements: [movement()] }), data({ customMovements: [another] }))
     ).toEqual([]);
+  });
+
+  it('sends a photo that has reached Cloud Storage, so a client can see it', () => {
+    const uploaded = movement({ photos: ['1.jpg'] });
+
+    const [entry] = planUploads(
+      trainer,
+      data({ customMovements: [movement()] }),
+      data({ customMovements: [uploaded] })
+    );
+
+    expect(entry.fields).toMatchObject({ photos: ['1.jpg'] });
   });
 });
 

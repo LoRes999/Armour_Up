@@ -1,13 +1,12 @@
 import React from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { routeParam } from '../../src/routeParams';
-import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
-import { Card, EmptyState, Eyebrow } from '../../src/components/ui';
+import { EmptyState, Eyebrow } from '../../src/components/ui';
 import { movementInfo } from '../../src/movementLibrary';
-import { photoSource } from '../../src/photoStorage';
+import { MovementPhotos } from '../../src/components/MovementPhotos';
 
 /**
  * One movement, opened from anywhere its name appears — the library, a
@@ -44,7 +43,6 @@ export default function MovementDetail() {
   const description = custom?.description ?? builtIn?.description ?? '';
   const cues = custom?.cues.length ? custom.cues : builtIn?.cues ?? [];
   const muscles = custom?.muscles.length ? custom.muscles : builtIn?.muscles ?? [];
-  const photos = custom?.photoUris ?? [];
 
   return (
     <>
@@ -71,33 +69,7 @@ export default function MovementDetail() {
         style={{ backgroundColor: p.background }}
         contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 40, gap: 14 }}
       >
-        {photos.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9 }}>
-            {photos.map((uri, index) => (
-              <Image
-                key={`${uri}-${index}`}
-                source={{ uri: photoSource(uri) }}
-                style={{
-                  width: 240,
-                  height: 170,
-                  borderRadius: metrics.cardRadius,
-                  backgroundColor: p.surfaceAlt,
-                }}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-        ) : custom ? (
-          // Only the trainer's own movements offer photos, so only they get
-          // the empty slot inviting one. A built-in is written copy alone.
-          <Card
-            radius={20}
-            style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 34, gap: 9 }}
-          >
-            <Ionicons name="image-outline" size={26} color={p.dim} />
-            <Text style={{ fontSize: 12, color: p.dim }}>No photos added</Text>
-          </Card>
-        ) : null}
+        {custom ? <MovementPhotos movement={custom} /> : null}
 
         {custom ? (
           <View

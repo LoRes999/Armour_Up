@@ -8,6 +8,7 @@ import { SERVER, auth, db, requireUser, text, timeZoneOr } from './admin';
 import { deliver } from './deliver';
 import { recipient } from './load';
 import { DEFAULT_PREFS, leftMessage } from './planner';
+import { removeStoredPhotos, trainerPhotoPrefix } from './photos';
 
 /**
  * Accounts and roles. The role lives in the sign-in token (a custom claim),
@@ -260,6 +261,9 @@ export const deleteAccount = onCall(async (request) => {
         if (error?.code !== 'auth/user-not-found') throw error;
       });
     }
+    // Their movement photos live in Storage, which recursiveDelete does not
+    // reach. Deleting an account has to leave nothing behind.
+    await removeStoredPhotos(trainerPhotoPrefix(user.uid), { uid: user.uid });
     await db.recursiveDelete(db.doc(`trainers/${user.uid}`));
   }
 

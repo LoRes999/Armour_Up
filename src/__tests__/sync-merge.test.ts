@@ -197,6 +197,19 @@ describe('changes arriving from the server', () => {
     expect(fresh.data.customMovements[0].photoUris).toEqual([]);
   });
 
+  it('takes the photos the coach has uploaded, which is what a client can see', () => {
+    const change: RemoteChange = {
+      collection: 'movements',
+      id: 'mv-3',
+      data: { name: 'Landmine Press', description: '', cues: [], muscles: [], photos: ['1.jpg'] },
+    };
+
+    const { data: next } = applyRemoteChanges(data(), [change], []);
+
+    // Nothing of this phone's own: a client has no copy of the coach's files.
+    expect(next.customMovements[0]).toMatchObject({ photos: ['1.jpg'], photoUris: [] });
+  });
+
   it('keeps the same object when nothing actually changed', () => {
     const local = workout();
     const before = data({ workouts: [local] });

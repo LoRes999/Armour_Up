@@ -257,8 +257,16 @@ export interface CustomMovement {
   description: string;
   cues: string[];
   muscles: string[];
-  /** Local URIs from the photo picker. */
+  /** This phone's own copies, from the photo picker. Never uploaded. */
   photoUris: string[];
+  /**
+   * The same photos in Cloud Storage, by object name, which is how a client
+   * ever sees one. A name appears here only once its upload has succeeded, so
+   * this doubles as the record of what is still to send — the local photos
+   * whose name is not in here — and a client is never pointed at an object
+   * that is not there.
+   */
+  photos?: string[];
 }
 
 export interface Client {

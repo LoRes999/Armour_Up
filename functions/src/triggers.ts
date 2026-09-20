@@ -7,6 +7,7 @@ import { deliver } from './deliver';
 import { allocateCode } from './invites';
 import { clientWorkouts, recipient } from './load';
 import { assignedMessage, finishedMessage, joinedMessage, recordsSet } from './planner';
+import { movementPhotoPrefix, removeStoredPhotos } from './photos';
 
 /**
  * Reactions to what phones write. Each is safe to run twice: counts are
@@ -125,6 +126,30 @@ export async function backfillInvite(trainerId: string, clientId: string): Promi
     });
   });
 }
+
+/**
+ * A deleted movement takes its photos with it.
+ *
+ * The coach's own phone deletes each object as it saves, but that only covers
+ * the phone that did the deleting, and only if it had a connection. This is
+ * what guarantees the bucket is not left holding photos of a movement nobody
+ * can reach — deleting the whole folder, so it does not matter which names
+ * the document still listed.
+ *
+ * Storage is not part of the data a delete is undone from, so this runs on the
+ * tombstone appearing and never on anything live.
+ */
+export const onMovementWritten = onDocumentWritten(
+  'trainers/{trainerId}/movements/{movementId}',
+  async (event) => {
+    const { trainerId, movementId } = event.params;
+    const before = event.data?.before.exists ? event.data.before.data() : undefined;
+    const after = event.data?.after.exists ? event.data.after.data() : undefined;
+    if (after?.deleted !== true || before?.deleted === true) return;
+
+    await removeStoredPhotos(movementPhotoPrefix(trainerId, movementId), { trainerId, movementId });
+  }
+);
 
 export const onClientWritten = onDocumentWritten('trainers/{trainerId}/clients/{clientId}', async (event) => {
   const { trainerId, clientId } = event.params;

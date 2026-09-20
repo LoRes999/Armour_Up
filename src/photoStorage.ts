@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { Directory, File, Paths } from 'expo-file-system';
+import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 
 /**
  * Photos on custom movements, kept where the operating system will not clear them.
@@ -24,27 +25,55 @@ function folder(): Directory {
   return new Directory(Paths.document, FOLDER);
 }
 
-/** The file name of a photo this module copied, or null for any other uri. */
-function copiedName(uri: string): string | null {
+/**
+ * The file name of a photo this module copied, or null for any other uri.
+ * That name is what identifies the photo everywhere else: it is the object's
+ * name in Cloud Storage (photoCloud.ts) and what a movement's `photos` holds.
+ */
+export function photoName(uri: string): string | null {
   const at = uri.lastIndexOf(MARKER);
   return at < 0 ? null : uri.slice(at + MARKER.length);
 }
 
 /**
+ * Longest edge of a photo kept on a phone. The picker's `quality` recompresses
+ * but does not resize, so a photo arrived at the camera's full resolution —
+ * one to four megabytes, which is a lot to send over a client's mobile data
+ * and indistinguishable from this on any phone screen.
+ */
+const MAX_EDGE = 1600;
+
+/**
  * Copies a picked photo into the documents folder and returns the uri to save.
  * If the copy fails, the original link is kept — a photo that might disappear
- * later is better than one that is refused now.
+ * later is better than one that is refused now. The same goes for the resize:
+ * a format the manipulator cannot read (an odd HEIC, say) is copied as it is
+ * rather than costing the coach the photo.
  */
 export async function keepPhoto(pickedUri: string): Promise<string> {
   if (!enabled) return shrinkForWeb(pickedUri);
   try {
     const dir = folder();
     dir.create({ intermediates: true, idempotent: true });
-    const source = new File(pickedUri);
+    const smaller = await shrink(pickedUri);
+    const source = new File(smaller);
     const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${source.extension || '.jpg'}`;
     const target = new File(dir, name);
     await source.copy(target);
     return target.uri;
+  } catch {
+    return pickedUri;
+  }
+}
+
+/** The picked photo at most MAX_EDGE across, or the original if that fails. */
+async function shrink(pickedUri: string): Promise<string> {
+  try {
+    const { uri } = await manipulateAsync(pickedUri, [{ resize: { width: MAX_EDGE } }], {
+      compress: 0.7,
+      format: SaveFormat.JPEG,
+    });
+    return uri;
   } catch {
     return pickedUri;
   }
@@ -88,7 +117,7 @@ async function shrinkForWeb(uri: string): Promise<string> {
  * Photos this module copied are found again by their file name instead.
  */
 export function photoSource(savedUri: string): string {
-  const name = enabled ? copiedName(savedUri) : null;
+  const name = enabled ? photoName(savedUri) : null;
   if (!name) return savedUri;
   try {
     return new File(folder(), name).uri;
@@ -109,7 +138,7 @@ export function photoSource(savedUri: string): string {
 export function discardPhotos(uris: readonly string[]): void {
   if (!enabled) return;
   for (const uri of uris) {
-    const name = copiedName(uri);
+    const name = photoName(uri);
     if (!name) continue;
     try {
       const file = new File(folder(), name);

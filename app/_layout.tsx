@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from '../src/auth';
 import { CloudBridge } from '../src/sync/CloudBridge';
 import { NotificationsBridge } from '../src/components/NotificationsBridge';
 import { PurchasesBridge } from '../src/components/PurchasesBridge';
+import { PhotoBridge } from '../src/components/PhotoBridge';
 import { useIsDark, usePalette } from '../src/theme';
 import { CelebrationProvider } from '../src/celebration/CelebrationProvider';
 
@@ -66,6 +67,7 @@ function Root() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <NotificationsBridge />
       <PurchasesBridge />
+      <PhotoBridge />
       <Stack
         screenOptions={{
           headerShown: false,
