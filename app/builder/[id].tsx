@@ -169,10 +169,13 @@ export default function Builder() {
           title: 'Workout builder',
           headerLeft: () => (
             <Pressable
+              // Close first, then undo: undoing a new workout removes the
+              // record this screen is reading, and doing it first showed
+              // "Workout not found" for a frame on the way out.
               onPress={() =>
                 leave(() => {
-                  undo();
                   close();
+                  undo();
                 })
               }
               hitSlop={8}

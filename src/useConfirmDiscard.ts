@@ -34,10 +34,14 @@ export function useConfirmDiscard(dirty: boolean, message: string, onDiscard?: (
       confirmLabel: 'Discard',
       cancelLabel: 'Keep editing',
       destructive: true,
-      // A screen that saves as it goes (the workout builder) undoes here first.
+      // A screen that saves as it goes (the workout builder) undoes here.
+      // After leaving, not before: the undo can remove the record the screen
+      // is reading, and undoing first rendered it against nothing — a frame
+      // of "Workout not found", and a second "Discard changes?" raised by a
+      // dirty check recomputed against a record that had just gone.
       onConfirm: () => {
-        onDiscard?.();
         navigation.dispatch(data.action);
+        onDiscard?.();
       },
     });
   });

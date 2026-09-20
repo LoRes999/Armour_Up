@@ -147,11 +147,17 @@ export default function CustomMovementForm() {
       destructive: true,
       onConfirm: () => {
         finished.current = true;
-        discardPhotos([...existing.photoUris, ...added.current]);
-        store.removeCustomMovement(existing.id);
         // Past the movement's own page too: closing just this form landed on
         // the detail page of a movement that no longer exists.
+        //
+        // And before the store loses it: this screen reads `existing` on
+        // every render, so removing it first flipped the title to "New
+        // movement", took the Delete button away mid-dismiss, and made the
+        // still-filled fields read as unsaved changes — asking "Discard
+        // changes?" on top of the delete just confirmed.
         leave(() => router.dismissTo('/(trainer)/library'));
+        discardPhotos([...existing.photoUris, ...added.current]);
+        store.removeCustomMovement(existing.id);
       },
     });
   };
