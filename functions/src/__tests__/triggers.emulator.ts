@@ -78,6 +78,50 @@ describe('recounting a client’s sessions', () => {
   });
 });
 
+/**
+ * A coach who used the app before accounts signs in and their roster goes up.
+ * Both invite fields are server-owned, so the upload strips them and the echo
+ * carries neither — the app then read undefined for both, which took the
+ * client's page down on formatInviteCode and left them reading PENDING.
+ */
+describe('a client adopted from a phone that had them before accounts', () => {
+  it('is given a code, and is not counted as having joined', async () => {
+    const { db } = admin;
+    await db.doc(`trainers/${COACH}/clients/c-adopted`).set({ name: 'Jordan Lee', inviteAccepted: true });
+
+    await triggers.backfillInvite(COACH, 'c-adopted');
+
+    const client = await read(`trainers/${COACH}/clients/c-adopted`);
+    expect(typeof client?.inviteCode).toBe('string');
+    expect(client?.inviteCode).not.toBe('');
+    expect(client?.inviteAccepted).toBe(false);
+    expect(await read(`inviteCodes/${client?.inviteCode}`)).toMatchObject({
+      trainerId: COACH,
+      clientId: 'c-adopted',
+    });
+  });
+
+  it('keeps having joined when an account really is linked', async () => {
+    const { db } = admin;
+    await db
+      .doc(`trainers/${COACH}/clients/c-joined`)
+      .set({ name: 'Jordan Lee', inviteAccepted: true, uid: 'u-jordan' });
+
+    await triggers.backfillInvite(COACH, 'c-joined');
+
+    expect((await read(`trainers/${COACH}/clients/c-joined`))?.inviteAccepted).toBe(true);
+  });
+
+  it('leaves a client who already has a code alone', async () => {
+    const { db } = admin;
+    await db.doc(`trainers/${COACH}/clients/c-coded`).set({ name: 'Jordan Lee', inviteCode: 'MW7K2Q' });
+
+    await triggers.backfillInvite(COACH, 'c-coded');
+
+    expect((await read(`trainers/${COACH}/clients/c-coded`))?.inviteCode).toBe('MW7K2Q');
+  });
+});
+
 describe('the coach’s name in scheduled messages', () => {
   it('comes from their coach record, as everywhere else', async () => {
     const { db } = admin;

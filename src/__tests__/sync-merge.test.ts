@@ -91,6 +91,41 @@ describe("a client whose session count the server hasn't worked out yet", () => 
     );
     expect(next.clients[0].sessionsCompleted).toBe(5);
   });
+
+  /**
+   * The same hole, two fields wider. A coach who used the app before accounts
+   * signs in, their roster is uploaded with the server-owned fields stripped,
+   * and those documents echo straight back. inviteCode and inviteAccepted are
+   * server-owned but had no fallback, so they came back undefined:
+   * formatInviteCode read `undefined.length` and took the client's page down
+   * to the error screen, and every adopted client showed PENDING for ever.
+   */
+  it("keeps this phone's invite code until the server has written one", () => {
+    const { id: _id, inviteCode: _code, inviteAccepted: _accepted, ...fields } = client({
+      inviteAccepted: true,
+    });
+    const echo: RemoteChange = {
+      collection: 'clients',
+      id: 'c-1',
+      data: { ...fields, updatedAt: 1757613600000, updatedBy: 'server' },
+    };
+
+    const { data: next } = applyRemoteChanges(data({ clients: [client({ inviteAccepted: true })] }), [echo], []);
+
+    expect(next.clients[0]).toMatchObject({ inviteCode: 'ABCDEF', inviteAccepted: true });
+  });
+
+  it('has something to show for a client it has never seen', () => {
+    const { id: _id, inviteCode: _code, inviteAccepted: _accepted, ...fields } = client();
+    const { data: next } = applyRemoteChanges(
+      data(),
+      [{ collection: 'clients', id: 'c-1', data: { ...fields, updatedAt: 1757613600000 } }],
+      []
+    );
+
+    expect(next.clients[0].inviteCode).toBe('');
+    expect(next.clients[0].inviteAccepted).toBe(false);
+  });
 });
 
 describe('changes arriving from the server', () => {

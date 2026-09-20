@@ -164,8 +164,16 @@ export function normaliseCode(input: string): string {
     .join('');
 }
 
-/** 'MW7K2Q' -> 'MW7-K2Q'. Display only — never store the formatted form. */
-export function formatInviteCode(code: string): string {
+/**
+ * 'MW7K2Q' -> 'MW7-K2Q'. Display only — never store the formatted form.
+ *
+ * Nothing is shown for a client whose code the server has not written yet.
+ * That state is meant to be brief and is handled properly by the fallback in
+ * sync/policy.ts; this is only here so a missing code can never be the reason
+ * a screen goes down.
+ */
+export function formatInviteCode(code: string | undefined): string {
+  if (!code) return '';
   const half = Math.ceil(code.length / 2);
   return `${code.slice(0, half)}-${code.slice(half)}`;
 }

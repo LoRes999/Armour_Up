@@ -95,27 +95,44 @@ export const onWorkoutWritten = onDocumentWritten('trainers/{trainerId}/workouts
   }
 });
 
+/**
+ * Gives a client an invite code when they reach the server without one —
+ * a roster uploaded from a phone that had it before accounts existed.
+ *
+ * It settles `inviteAccepted` in the same write. Both fields are server-owned,
+ * so an upload strips them and the phone gets whatever the echo carries; with
+ * neither written, the app read `undefined` for both, which took the client's
+ * page down on formatInviteCode and left every adopted client reading PENDING
+ * for good. Accepted means an account has actually redeemed a code, so it can
+ * only be true if one is linked.
+ */
+export async function backfillInvite(trainerId: string, clientId: string): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const ref = db.doc(`trainers/${trainerId}/clients/${clientId}`);
+    const current = await tx.get(ref);
+    if (!current.exists || current.get('inviteCode')) return;
+    const code = await allocateCode(tx);
+    tx.create(db.collection('inviteCodes').doc(code), {
+      trainerId,
+      clientId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(ref, {
+      inviteCode: code,
+      inviteAccepted: current.get('inviteAccepted') === true && Boolean(current.get('uid')),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: SERVER,
+    });
+  });
+}
+
 export const onClientWritten = onDocumentWritten('trainers/{trainerId}/clients/{clientId}', async (event) => {
   const { trainerId, clientId } = event.params;
   const before = event.data?.before.exists ? event.data.before.data() : undefined;
   const after = event.data?.after.exists ? event.data.after.data() : undefined;
   if (!live(after)) return;
 
-  // Uploaded from a phone that had it before accounts existed: no code yet.
-  if (!after?.inviteCode) {
-    await db.runTransaction(async (tx) => {
-      const ref = db.doc(`trainers/${trainerId}/clients/${clientId}`);
-      const current = await tx.get(ref);
-      if (!current.exists || current.get('inviteCode')) return;
-      const code = await allocateCode(tx);
-      tx.create(db.collection('inviteCodes').doc(code), {
-        trainerId,
-        clientId,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      tx.update(ref, { inviteCode: code, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
-    });
-  }
+  if (!after?.inviteCode) await backfillInvite(trainerId, clientId);
 
   // They used their code: tell the coach.
   if (after?.inviteAccepted === true && before?.inviteAccepted !== true && after?.uid) {

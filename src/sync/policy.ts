@@ -26,9 +26,16 @@ export const SERVER_OWNED: Readonly<Record<CollectionName, readonly string[]>> =
  * session count only exists once the server has recounted a completed
  * workout, so a client brought over from before accounts, or one with nothing
  * finished yet, arrives without one.
+ *
+ * Every server-owned field needs an entry. A coach who used the app before
+ * accounts has their roster uploaded with these stripped, and those documents
+ * echo back at once; without a fallback the field returns as undefined.
+ * inviteCode had none, so formatInviteCode read `undefined.length` and took
+ * the client's page down to the error screen, and inviteAccepted had none, so
+ * an adopted client showed PENDING for ever.
  */
 export const SERVER_FALLBACKS: Readonly<Record<CollectionName, Readonly<Record<string, unknown>>>> = {
-  clients: { sessionsCompleted: 0 },
+  clients: { sessionsCompleted: 0, inviteCode: '', inviteAccepted: false },
   dayTypes: {},
   movements: {},
   workouts: {},
