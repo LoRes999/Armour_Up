@@ -10,6 +10,7 @@ import {
   memoryLocalCache,
 } from 'firebase/firestore';
 import { type Functions, connectFunctionsEmulator, getFunctions } from 'firebase/functions';
+import { type FirebaseStorage, connectStorageEmulator, getStorage } from 'firebase/storage';
 import { cloudConfig } from './config';
 
 /**
@@ -22,6 +23,8 @@ export interface FirebaseServices {
   auth: Auth;
   db: Firestore;
   functions: Functions;
+  /** Movement photos, and nothing else. See storage.rules. */
+  storage: FirebaseStorage;
 }
 
 let services: FirebaseServices | null = null;
@@ -52,14 +55,16 @@ export function firebase(): FirebaseServices {
   });
 
   const functions = getFunctions(app);
+  const storage = getStorage(app);
 
   const host = cloudConfig.emulatorHost;
   if (host) {
     connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
     connectFirestoreEmulator(db, host, 8080);
     connectFunctionsEmulator(functions, host, 5001);
+    connectStorageEmulator(storage, host, 9199);
   }
 
-  services = { app, auth, db, functions };
+  services = { app, auth, db, functions, storage };
   return services;
 }

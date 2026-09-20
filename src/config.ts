@@ -34,7 +34,9 @@ const emulatorFirebase = {
   apiKey: 'demo-api-key',
   authDomain: `${EMULATOR_PROJECT}.firebaseapp.com`,
   projectId: EMULATOR_PROJECT,
-  storageBucket: '',
+  // Movement photos need somewhere to go against the emulators too, and the
+  // Storage SDK refuses to start without a bucket name.
+  storageBucket: `${EMULATOR_PROJECT}.appspot.com`,
   messagingSenderId: '',
   appId: '',
 };

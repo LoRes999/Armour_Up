@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Movement photos, and nothing else.
+//
+// The same rule the movement's own document has (firestore.rules, match
+// /movements/{movementId}): its coach writes, that coach's clients read,
+// nobody else sees it. Change the two together — the split is only that one
+// holds the words and the other the pictures.
+//
+// Roles come from the sign-in token (custom claims), which only Cloud
+// Functions can set, exactly as in firestore.rules.
+// Layout: trainers/{trainerId}/movements/{movementId}/{photo}.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isTrainer(trainerId) {
+      return signedIn() && request.auth.token.role == 'trainer' && request.auth.uid == trainerId;
+    }
+
+    function isClientOf(trainerId) {
+      return signedIn()
+        && request.auth.token.role == 'client'
+        && request.auth.token.trainerId == trainerId;
+    }
+
+    // A photo is resized to roughly 200 KB before it is uploaded. This is well
+    // clear of that, and is here so a bug — or somebody holding a coach's
+    // token — cannot fill the bucket, and so nothing but an image lands here.
+    function isPhoto() {
+      return request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /trainers/{trainerId}/movements/{movementId}/{photo} {
+      allow read: if isTrainer(trainerId) || isClientOf(trainerId);
+      allow write: if isTrainer(trainerId) && (request.resource == null || isPhoto());
+    }
+  }
+}
