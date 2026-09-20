@@ -222,6 +222,15 @@ describe('accounts', () => {
 });
 
 /** A document as the server holds it, read past the rules. */
+/** Polls until the condition holds, for listeners that answer when they answer. */
+async function waitFor(done: () => boolean, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!done()) {
+    if (Date.now() > deadline) throw new Error('Timed out waiting for the listener.');
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
 async function serverCopy(path: string) {
   let data: Record<string, unknown> | undefined;
   await env.withSecurityRulesDisabled(async (context) => {
@@ -265,6 +274,45 @@ describe('the sync adapter', () => {
     const created = await serverCopy(`trainers/${COACH}/workouts/w-created`);
     expect(created?.name).toBe('Brand new');
     expect(created?.deleted).not.toBe(true);
+  });
+
+  /**
+   * The flicker Ryan reported on 2026-09-20, against the real SDK. An edit
+   * leaves updatedAt unresolved for a moment, so the document drops out of the
+   * listener's own `updatedAt >= since` filter and Firestore reports it as
+   * removed. Read as a deletion, that took the session off the screen mid-edit
+   * and threw the queued upload away with it. The unit test in
+   * src/__tests__/sync-firestore.test.ts pins the mapping; this pins the
+   * behaviour the mapping was wrong about.
+   */
+  it('never reports an edited document as gone', async () => {
+    const adapter = firestoreAdapter(coach());
+    const heard: (Record<string, unknown> | null)[] = [];
+    const stop = adapter.subscribe(
+      coachScope,
+      0,
+      (changes) => {
+        for (const change of changes) if (change.id === 'w-live') heard.push(change.data);
+      },
+      () => undefined
+    );
+
+    try {
+      const { deleted: _stored, ...fields } = trainerWorkout;
+      await adapter.write(coachScope, [
+        { collection: 'workouts', id: 'w-live', op: 'upsert', fields: { ...fields, name: 'Push Day A' }, rev: 0 },
+      ]);
+      await waitFor(() => heard.length > 0);
+
+      await adapter.write(coachScope, [
+        { collection: 'workouts', id: 'w-live', op: 'upsert', fields: { ...fields, name: 'Push Day B' }, rev: 1 },
+      ]);
+      await waitFor(() => heard.some((data) => data?.name === 'Push Day B'));
+
+      expect(heard).not.toContain(null);
+    } finally {
+      stop();
+    }
   });
 });
 

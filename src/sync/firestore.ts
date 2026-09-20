@@ -134,8 +134,30 @@ export function firestoreAdapter(db: Firestore): RemoteAdapter {
             let newest = 0;
             const changes: RemoteChange[] = [];
             for (const change of snapshot.docChanges()) {
+              // Our own write, before the server has confirmed it.
               if (change.doc.metadata.hasPendingWrites) continue;
-              const data = change.type === 'removed' ? null : (change.doc.data() as Fields);
+              // A `removed` here means the document left this query's results,
+              // which is not the same as being deleted — and in this app it is
+              // never a deletion. Deletes are soft (see write() above): the
+              // document stays, gains `deleted: true`, and arrives as an
+              // ordinary change that merge.ts already understands.
+              //
+              // What `removed` really meant was the flicker Ryan reported on
+              // 2026-09-20. The filter below is `updatedAt >= since`, and a
+              // write stamps updatedAt with a server timestamp that is
+              // unresolved on this phone until the server answers. For that
+              // second the document fails its own filter, Firestore reports it
+              // as removed, and reading that as a deletion took the session
+              // off the screen mid-edit — and discarded the queued upload with
+              // it, so the edit could be lost for good.
+              //
+              // The one other way a document could leave: a client's workout
+              // query also filters on clientId, so moving a workout to another
+              // client would look like this. Nothing changes clientId after a
+              // workout is created. Anything that starts to must send a
+              // tombstone as well.
+              if (change.type === 'removed') continue;
+              const data = change.doc.data() as Fields;
               newest = Math.max(newest, millisOf(data?.updatedAt));
               changes.push({ collection: name, id: change.doc.id, data });
             }
