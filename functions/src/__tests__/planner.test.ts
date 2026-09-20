@@ -38,6 +38,10 @@ const workout = (over: Partial<Workout> = {}): Workout => ({
   coachNote: '',
   status: 'scheduled',
   loggedBy: 'trainer',
+  // Sent, like most sessions in these tests. A client is only reminded about
+  // one their coach has actually sent; the cases about drafts set this back
+  // to undefined for themselves.
+  assignedAt: '2026-09-10T12:00:00.000Z',
   ...over,
 });
 
@@ -202,8 +206,38 @@ describe('a malformed workout', () => {
 });
 
 describe('workout reminders', () => {
-  const today = workout({ date: '2026-09-11T22:00:00.000Z' });
+  const today = workout({ date: '2026-09-11T22:00:00.000Z', assignedAt: '2026-09-10T12:00:00.000Z' });
   const trainer = coach([{ client: client(), account: person('u-marcus'), workouts: [today] }]);
+
+  /**
+   * The client's Today only shows sessions their coach has actually sent, so
+   * reminding them about a draft named a session that was not there when they
+   * opened the app: "Bench Day today — 0 exercises, 0 sets", then "Rest day."
+   * The coach's own digest is different: unsent drafts are theirs to see, but
+   * an empty one is not a session either.
+   */
+  it('says nothing to the client about a session their coach has not sent', () => {
+    const draft = workout({ date: '2026-09-11T22:00:00.000Z', assignedAt: undefined });
+    const unsent = coach([{ client: client(), account: person('u-marcus'), workouts: [draft] }]);
+
+    const messages = planScheduled(nyMorning(11), [unsent]).filter((m) => m.kind === 'reminder');
+
+    expect(messages).toEqual([]);
+  });
+
+  it('counts neither side an empty draft as a session', () => {
+    const empty = workout({
+      date: '2026-09-11T22:00:00.000Z',
+      assignedAt: '2026-09-10T12:00:00.000Z',
+      exercises: [],
+    });
+    const blank = coach([{ client: client(), account: person('u-marcus'), workouts: [empty] }]);
+
+    const messages = planScheduled(nyMorning(11), [blank]);
+
+    expect(messages.filter((m) => m.kind === 'reminder')).toEqual([]);
+    expect(messages.filter((m) => m.kind === 'schedule')).toEqual([]);
+  });
 
   it('reminds the client at 7 AM on a day with a session', () => {
     const [message] = planScheduled(nyMorning(11), trainer ? [trainer] : []).filter((m) => m.kind === 'reminder');

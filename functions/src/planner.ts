@@ -182,8 +182,13 @@ function forClient(now: Date, context: ClientContext, account: Recipient, traine
   const history = completed(context.workouts);
 
   if (prefs.reminders && clock.hour === SEND_AT.reminder.hour) {
+    // The same two conditions the client's own Today uses (store.tsx's
+    // sentWorkoutFor): sent by their coach, and with something in it. Without
+    // them a coach's unsent draft woke the client with "Bench Day today — 0
+    // exercises, 0 sets", and the app they opened said "Rest day."
     const today = context.workouts
       .filter((w) => w.loggedBy === 'trainer' && w.status !== 'completed')
+      .filter((w) => w.assignedAt !== undefined && w.exercises.length > 0)
       .filter((w) => localDate(w.date, timeZone) === clock.date)
       .sort((a, b) => a.date.localeCompare(b.date));
     const next = today[0];
@@ -259,7 +264,12 @@ function forTrainer(now: Date, trainer: TrainerContext): Message[] {
     const today = trainer.clients
       .flatMap(({ client, workouts }) =>
         workouts
+          // A coach sees what they have built for today whether or not they
+          // have sent it (store.tsx's isTodaysSession), so no assignedAt here
+          // — but an empty draft is not a session on either side, and counting
+          // it named a client whose card the coach then could not find.
           .filter((w) => w.loggedBy === 'trainer' && w.status !== 'completed')
+          .filter((w) => w.exercises.length > 0)
           .filter((w) => localDate(w.date, timeZone) === clock.date)
           .map((w) => ({ name: firstName(client.name), date: w.date }))
       )
