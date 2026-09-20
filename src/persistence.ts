@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Client, CustomMovement, DayType, Role, Subscription, Workout } from './models';
 import type { Appearance } from './store';
-import type { Outbox } from './sync/types';
+import type { Outbox, Watermarks } from './sync/types';
 import { notify } from './confirm';
 
 /**
@@ -58,13 +58,19 @@ export interface Snapshot {
 export interface SyncSnapshot {
   /** Changes not yet confirmed by the server, oldest first. */
   outbox: Outbox;
-  /** The newest server update seen, so a launch asks only for what changed since. */
-  lastSyncedAt: number | null;
+  /**
+   * How far along each collection is, so a launch asks each only for what it
+   * has not seen. This replaced a single number for all four; an install
+   * saved by an older build has none, upgradeSnapshot leaves it empty, and
+   * that one full re-read is the point — it is what heals a phone the old
+   * shared watermark had already skipped data on.
+   */
+  watermarks: Watermarks;
   /** The account this data belongs to. Null for data from before accounts existed. */
   ownerUid: string | null;
 }
 
-export const EMPTY_SYNC: SyncSnapshot = { outbox: [], lastSyncedAt: null, ownerUid: null };
+export const EMPTY_SYNC: SyncSnapshot = { outbox: [], watermarks: {}, ownerUid: null };
 
 /**
  * What reading the saved store found.

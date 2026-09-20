@@ -52,18 +52,41 @@ describe('saved data from before cloud sync', () => {
 });
 
 describe('version 2', () => {
-  it('reads back its queue exactly, removals included', () => {
-    const outbox = enqueue([], [
+  const queue = () =>
+    enqueue([], [
       { collection: 'workouts', id: 'w-1', op: 'upsert', fields: { dayTypeId: null, name: 'A' }, rev: 0 },
       { collection: 'clients', id: 'c-1', op: 'delete', fields: {}, rev: 0 },
     ]);
+
+  it('reads back its queue exactly, removals included', () => {
+    const outbox = queue();
+    const saved = {
+      ...version1,
+      version: 2,
+      sync: { outbox, watermarks: { workouts: 1757613600000 }, ownerUid: 'u-coach' },
+    };
+    const upgraded = upgradeSnapshot(JSON.parse(JSON.stringify(saved)));
+    expect(upgraded?.sync).toEqual(saved.sync);
+  });
+
+  /**
+   * Saved by a build that kept one watermark for all four collections. That
+   * number is not worth carrying over — it is the very thing that could have
+   * skipped data — so the phone starts each collection from nothing and reads
+   * everything once. The queue still has to survive: it is the changes this
+   * phone has made and not yet sent.
+   */
+  it('starts the watermarks fresh for a file saved before they were split up', () => {
+    const outbox = queue();
     const saved = {
       ...version1,
       version: 2,
       sync: { outbox, lastSyncedAt: 1757613600000, ownerUid: 'u-coach' },
     };
     const upgraded = upgradeSnapshot(JSON.parse(JSON.stringify(saved)));
-    expect(upgraded?.sync).toEqual(saved.sync);
+    expect(upgraded?.sync.watermarks).toEqual({});
+    expect(upgraded?.sync.outbox).toEqual(outbox);
+    expect(upgraded?.sync.ownerUid).toBe('u-coach');
   });
 
   it('rejects a version 2 file without a queue rather than guessing', () => {

@@ -57,8 +57,8 @@ function listen() {
   const heard: RemoteChange[][] = [];
   const stop = firestoreAdapter({} as Firestore).subscribe(
     COACH,
-    0,
-    (changes) => heard.push(changes),
+    {},
+    (_collection, changes) => heard.push(changes),
     () => undefined
   );
   return { heard, stop, workouts: mockListeners[3] };

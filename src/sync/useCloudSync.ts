@@ -23,6 +23,7 @@ import {
   type SyncScope,
   type SyncStatus,
   type SyncedData,
+  type Watermarks,
   listOf,
   withList,
 } from './types';
@@ -83,7 +84,10 @@ export function useCloudSync({
   const shadowRef = useRef<SyncedData | null>(null);
   // undefined until the first capture, so a relaunch is told apart from a sign-in.
   const handledKeyRef = useRef<string | null | undefined>(undefined);
-  const inboxRef = useRef<{ changes: RemoteChange[]; serverTime: number }>({ changes: [], serverTime: 0 });
+  const inboxRef = useRef<{ changes: RemoteChange[]; serverTime: Watermarks }>({
+    changes: [],
+    serverTime: {},
+  });
   const [inboxTick, setInboxTick] = useState(0);
   // The scope whose local data has been prepared. Listening waits for it, so a
   // fresh start asks the server for everything rather than for changes since.
@@ -165,7 +169,7 @@ export function useCloudSync({
     const isFirst = handledKeyRef.current === undefined;
     handledKeyRef.current = nextKey;
     // Changes heard for the previous account are not this one's to fold in.
-    inboxRef.current = { changes: [], serverTime: 0 };
+    inboxRef.current = { changes: [], serverTime: {} };
     if (!next) {
       shadowRef.current = current;
       if (!isFirst) setReadyKey(null);
@@ -182,13 +186,13 @@ export function useCloudSync({
       // only a starter this phone actually changed goes up; sending them all
       // put a coach's renamed day types back to "Push Day" on every device
       // whenever they signed in on a new or reinstalled phone.
-      syncRef.current = { ...sync, ownerUid: next.uid, lastSyncedAt: null };
+      syncRef.current = { ...sync, ownerUid: next.uid, watermarks: {} };
       shadowRef.current = { ...EMPTY_DATA, dayTypes: SEED_DAY_TYPES };
     } else {
       // Another account's data, or a client's phone: start clean and let the
       // server fill it. This round stops here — comparing the old data against
       // nothing would upload somebody else's roster into this account.
-      syncRef.current = { outbox: [], lastSyncedAt: null, ownerUid: next.uid };
+      syncRef.current = { outbox: [], watermarks: {}, ownerUid: next.uid };
       shadowRef.current = EMPTY_DATA;
       const { setters: live } = latest.current;
       live.clients([]);
@@ -221,14 +225,17 @@ export function useCloudSync({
 
     const inbox = inboxRef.current;
     if (inbox.changes.length > 0) {
-      inboxRef.current = { changes: [], serverTime: 0 };
+      inboxRef.current = { changes: [], serverTime: {} };
       const result = applyRemoteChanges(current, inbox.changes, syncRef.current.outbox);
       shadowRef.current = result.data;
-      syncRef.current = {
-        ...syncRef.current,
-        outbox: result.outbox,
-        lastSyncedAt: Math.max(syncRef.current.lastSyncedAt ?? 0, inbox.serverTime) || null,
-      };
+      // Only the collections this batch carried move on. One of them racing
+      // ahead used to take the others with it.
+      const watermarks = { ...syncRef.current.watermarks };
+      for (const [collection, serverTime] of Object.entries(inbox.serverTime)) {
+        const name = collection as CollectionName;
+        if (serverTime) watermarks[name] = Math.max(watermarks[name] ?? 0, serverTime);
+      }
+      syncRef.current = { ...syncRef.current, outbox: result.outbox, watermarks };
       setLastSyncedAt(Date.now());
       for (const collection of COLLECTIONS) {
         const before = listOf(current, collection);
@@ -270,8 +277,8 @@ export function useCloudSync({
       retry = null;
       stop = services.adapter.subscribe(
         scope,
-        syncRef.current.lastSyncedAt ?? 0,
-        (changes, serverTime) => {
+        syncRef.current.watermarks,
+        (collection, changes, serverTime) => {
           attempts = 0;
           if (changes.length === 0) {
             setLastSyncedAt(Date.now());
@@ -279,12 +286,18 @@ export function useCloudSync({
           }
           inboxRef.current = {
             changes: [...inboxRef.current.changes, ...changes],
-            serverTime: Math.max(inboxRef.current.serverTime, serverTime),
+            serverTime: {
+              ...inboxRef.current.serverTime,
+              [collection]: Math.max(inboxRef.current.serverTime[collection] ?? 0, serverTime),
+            },
           };
           setInboxTick((tick) => tick + 1);
         },
         (error) => {
-          // One subscription is several listeners; the first to fail restarts them all.
+          // One subscription is several listeners, and the first to fail
+          // restarts them all. Safe now that each carries its own watermark:
+          // a restart asks every collection for what that collection is
+          // missing, rather than for what the luckiest one already had.
           if (!alive || retry) return;
           console.warn('Cloud sync stopped listening for changes; trying again.', error);
           stop?.();

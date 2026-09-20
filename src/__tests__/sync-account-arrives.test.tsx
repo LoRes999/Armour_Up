@@ -5,7 +5,14 @@ import { EMPTY_SYNC, SNAPSHOT_VERSION } from '../persistence';
 import { StoreProvider, useStore } from '../store';
 import { SEED_DAY_TYPES } from '../sampleData';
 import { CloudContext, type CloudServices, type CloudSession } from '../sync/context';
-import type { OutboxEntry, RemoteAdapter, RemoteChange, SyncScope } from '../sync/types';
+import type {
+  CollectionName,
+  OutboxEntry,
+  RemoteAdapter,
+  RemoteChange,
+  SyncScope,
+  Watermarks,
+} from '../sync/types';
 
 /**
  * On a real phone the store is read back first and the signed-in account is
@@ -39,14 +46,14 @@ class FakeServer implements RemoteAdapter {
   subscriptions = 0;
   /** Errors to hand to the next subscribers, in order, instead of listening. */
   failures: unknown[] = [];
-  private listener?: (changes: RemoteChange[], serverTime: number) => void;
+  private listener?: (collection: CollectionName, changes: RemoteChange[], serverTime: number) => void;
 
   async write(_scope: SyncScope, _entries: readonly OutboxEntry[]) {}
 
   subscribe(
     _scope: SyncScope,
-    _since: number,
-    onChanges: (changes: RemoteChange[], serverTime: number) => void,
+    _since: Watermarks,
+    onChanges: (collection: CollectionName, changes: RemoteChange[], serverTime: number) => void,
     onError: (error: unknown) => void
   ) {
     this.subscriptions += 1;
@@ -62,7 +69,7 @@ class FakeServer implements RemoteAdapter {
   }
 
   deliverJordan() {
-    this.listener?.([{ collection: 'clients', id: 'c-jordan', data: jordanRecord }], 1757613600000);
+    this.listener?.('clients', [{ collection: 'clients', id: 'c-jordan', data: jordanRecord }], 1757613600000);
   }
 }
 

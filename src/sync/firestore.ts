@@ -90,29 +90,37 @@ export function firestoreAdapter(db: Firestore): RemoteAdapter {
     },
 
     subscribe(scope, since, onChanges, onError) {
-      // Inclusive: a document written in the same millisecond as the last one
-      // seen must not be skipped. Seeing one twice is harmless.
-      const after = where('updatedAt', '>=', Timestamp.fromMillis(since));
+      // Inclusive, and per collection: a document written in the same
+      // millisecond as the last one seen must not be skipped, and a collection
+      // that has heard nothing yet still asks for everything however far along
+      // the others are. Seeing one twice is harmless.
+      const after = (name: CollectionName) =>
+        where('updatedAt', '>=', Timestamp.fromMillis(since[name] ?? 0));
       const base = (name: CollectionName) => collection(db, 'trainers', scope.trainerId, name);
 
       const targets: { name: CollectionName; source: Query | DocumentReference }[] =
         scope.role === 'trainer'
           ? (['clients', 'dayTypes', 'movements', 'workouts'] as const).map((name) => ({
               name,
-              source: query(base(name), after),
+              source: query(base(name), after(name)),
             }))
           : [
               { name: 'clients', source: ref(scope, 'clients', scope.clientId) },
-              { name: 'dayTypes', source: query(base('dayTypes'), after) },
-              { name: 'movements', source: query(base('movements'), after) },
+              { name: 'dayTypes', source: query(base('dayTypes'), after('dayTypes')) },
+              { name: 'movements', source: query(base('movements'), after('movements')) },
               {
                 name: 'workouts',
-                source: query(base('workouts'), where('clientId', '==', scope.clientId), after),
+                source: query(
+                  base('workouts'),
+                  where('clientId', '==', scope.clientId),
+                  after('workouts')
+                ),
               },
             ];
 
       const stops = targets.map(({ name, source }) => {
-        const deliver = (changes: RemoteChange[], serverTime: number) => onChanges(changes, serverTime);
+        const deliver = (changes: RemoteChange[], serverTime: number) =>
+          onChanges(name, changes, serverTime);
 
         if (source.type === 'document') {
           return onSnapshot(

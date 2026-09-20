@@ -74,6 +74,18 @@ export interface RemoteChange {
 }
 
 /**
+ * How far along each collection is: the newest server update it has seen, in
+ * ms since epoch. A collection with no entry has seen nothing and asks for
+ * everything.
+ *
+ * Per collection, not one number for all four, because each is its own
+ * listener with its own filter. Sharing one meant the newest change any of
+ * them saw became the starting point for all of them, and the ones that had
+ * heard nothing yet never asked for what came before it.
+ */
+export type Watermarks = Partial<Record<CollectionName, number>>;
+
+/**
  * Thrown by an adapter. `retryable` separates "no signal, try again later"
  * from "the server refused this and always will" — retrying the second kind
  * forever would block every change queued behind it.
@@ -93,13 +105,14 @@ export interface RemoteAdapter {
   /** Writes the entries together. Rejects with RemoteWriteError. */
   write(scope: SyncScope, entries: readonly OutboxEntry[]): Promise<void>;
   /**
-   * Streams every change in scope made after `since` (ms since epoch; 0 for
-   * everything). `serverTime` is the newest update time seen, for next launch.
+   * Streams every change in scope each collection has not seen yet, per its
+   * own watermark. `serverTime` is the newest update time in that batch, and
+   * moves only that collection's watermark on.
    */
   subscribe(
     scope: SyncScope,
-    since: number,
-    onChanges: (changes: RemoteChange[], serverTime: number) => void,
+    since: Watermarks,
+    onChanges: (collection: CollectionName, changes: RemoteChange[], serverTime: number) => void,
     onError: (error: unknown) => void
   ): () => void;
 }

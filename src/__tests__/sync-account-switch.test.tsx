@@ -5,7 +5,14 @@ import { SNAPSHOT_VERSION } from '../persistence';
 import { StoreProvider, useStore } from '../store';
 import { SEED_DAY_TYPES } from '../sampleData';
 import { CloudContext, type CloudServices, type CloudSession } from '../sync/context';
-import type { OutboxEntry, RemoteAdapter, RemoteChange, SyncScope } from '../sync/types';
+import type {
+  CollectionName,
+  OutboxEntry,
+  RemoteAdapter,
+  RemoteChange,
+  SyncScope,
+  Watermarks,
+} from '../sync/types';
 
 /**
  * One coach signs out and another signs in on the same phone while an upload
@@ -48,8 +55,8 @@ class GatedServer implements RemoteAdapter {
 
   subscribe(
     _scope: SyncScope,
-    _since: number,
-    _onChanges: (changes: RemoteChange[], serverTime: number) => void,
+    _since: Watermarks,
+    _onChanges: (collection: CollectionName, changes: RemoteChange[], serverTime: number) => void,
     _onError: (error: unknown) => void
   ) {
     return () => {};

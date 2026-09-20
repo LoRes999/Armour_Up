@@ -290,8 +290,8 @@ describe('the sync adapter', () => {
     const heard: (Record<string, unknown> | null)[] = [];
     const stop = adapter.subscribe(
       coachScope,
-      0,
-      (changes) => {
+      {},
+      (_collection, changes) => {
         for (const change of changes) if (change.id === 'w-live') heard.push(change.data);
       },
       () => undefined

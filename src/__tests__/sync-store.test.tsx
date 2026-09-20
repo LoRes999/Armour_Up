@@ -6,11 +6,13 @@ import { StoreProvider, useStore } from '../store';
 import { SAMPLE_CLIENT_IDS, SEED_DAY_TYPES } from '../sampleData';
 import { CloudContext, type CloudSession } from '../sync/context';
 import {
+  type CollectionName,
   type OutboxEntry,
   type RemoteAdapter,
   type RemoteChange,
   RemoteWriteError,
   type SyncScope,
+  type Watermarks,
 } from '../sync/types';
 
 /**
@@ -25,15 +27,19 @@ const coach: SyncScope = { role: 'trainer', uid: 'u-coach', trainerId: 'u-coach'
 class FakeServer implements RemoteAdapter {
   writes: OutboxEntry[] = [];
   offline = false;
-  subscribedSince: number | undefined;
-  private listener?: (changes: RemoteChange[], serverTime: number) => void;
+  subscribedSince: Watermarks | undefined;
+  private listener?: (collection: CollectionName, changes: RemoteChange[], serverTime: number) => void;
 
   async write(_scope: SyncScope, entries: readonly OutboxEntry[]) {
     if (this.offline) throw new RemoteWriteError('unavailable', true);
     this.writes.push(...entries);
   }
 
-  subscribe(_scope: SyncScope, since: number, onChanges: (c: RemoteChange[], t: number) => void) {
+  subscribe(
+    _scope: SyncScope,
+    since: Watermarks,
+    onChanges: (collection: CollectionName, c: RemoteChange[], t: number) => void
+  ) {
     this.subscribedSince = since;
     this.listener = onChanges;
     return () => {
@@ -45,8 +51,15 @@ class FakeServer implements RemoteAdapter {
     return this.listener !== undefined;
   }
 
-  deliver(changes: RemoteChange[]) {
-    this.listener?.(changes, 1757613600000);
+  /** One listener per collection, as the real adapter has. */
+  deliver(changes: RemoteChange[], serverTime = 1757613600000) {
+    for (const collection of new Set(changes.map((change) => change.collection))) {
+      this.listener?.(
+        collection,
+        changes.filter((change) => change.collection === collection),
+        serverTime
+      );
+    }
   }
 
   wrote(collection: string) {
@@ -218,7 +231,48 @@ describe('a coach phone with cloud sync', () => {
     });
     expect(server.wrote('clients')).toEqual([]);
     // Asks the server for everything, not just changes since the other account's last sync.
-    expect(server.subscribedSince).toBe(0);
+    expect(server.subscribedSince).toEqual({});
+  });
+
+  /**
+   * One watermark for all four collections meant the newest change any of them
+   * saw became the starting point for all of them. A client joining hears
+   * their own record first — it has no `updatedAt >= since` filter — and the
+   * documented, expected permission error on the other three then restarted
+   * them from that moment, so every workout their coach had already written
+   * was older than the watermark and never asked for again. With
+   * memoryLocalCache() nothing is cached between launches, so relaunching did
+   * not help: the program was simply gone.
+   */
+  it('remembers how far along each collection is on its own', async () => {
+    const { server, rendered } = mount();
+    const { result } = await rendered;
+    await hydrated(result);
+    await waitFor(() => expect(server.listening).toBe(true));
+
+    await act(async () => {
+      server.deliver(
+        [{ collection: 'clients', id: 'client-remote', data: { name: 'Sam Remote', unit: 'kg' } }],
+        1757613600000
+      );
+    });
+
+    await waitFor(async () => expect((await savedSync()).watermarks).toEqual({ clients: 1757613600000 }), slowly);
+  });
+
+  it('asks a collection it has heard nothing from for everything', async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify(
+        savedStore({ sync: { ...EMPTY_SYNC, ownerUid: 'u-coach', watermarks: { clients: 1757613600000 } } })
+      )
+    );
+    const { server, rendered } = mount();
+    const { result } = await rendered;
+    await hydrated(result);
+
+    await waitFor(() => expect(server.listening).toBe(true));
+    expect(server.subscribedSince).toEqual({ clients: 1757613600000 });
   });
 
   it('keeps sample data on the phone', async () => {
