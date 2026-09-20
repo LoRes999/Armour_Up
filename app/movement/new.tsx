@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,7 +31,8 @@ export default function CustomMovementForm() {
   const router = useRouter();
   const close = useClose('/(trainer)/library');
   const store = useStore();
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit: rawEdit } = useLocalSearchParams<{ edit?: string | string[] }>();
+  const edit = routeParam(rawEdit);
 
   const existing = edit ? store.customMovements.find((m) => m.id === edit) : undefined;
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../../src/routeParams';
 import { isMissedSession, useStore } from '../../../src/store';
 import { metrics, usePalette } from '../../../src/theme';
 import {
@@ -36,7 +37,8 @@ export default function ClientDetail() {
   const router = useRouter();
   const store = useStore();
   const auth = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = routeParam(rawId);
   const [tab, setTab] = useState<Tab>('program');
   // The first eight of each, then "See all" (Ryan's call, 2026-09-13): capped,
   // everything older was out of reach.

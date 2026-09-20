@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
@@ -43,7 +44,8 @@ export default function SoloSession() {
   const router = useRouter();
   const store = useStore();
   const { celebrate } = useCelebration();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = routeParam(rawId);
 
   const workout = store.workout(id);
   const client = workout ? store.client(workout.clientId) : undefined;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
@@ -37,7 +38,12 @@ export default function Builder() {
   const store = useStore();
   const { celebrate } = useCelebration();
   // `fresh`: "New workout" created this one on the way in.
-  const { id, fresh } = useLocalSearchParams<{ id: string; fresh?: string }>();
+  const { id: rawId, fresh: rawFresh } = useLocalSearchParams<{
+    id?: string | string[];
+    fresh?: string | string[];
+  }>();
+  const id = routeParam(rawId);
+  const fresh = routeParam(rawFresh);
 
   const workout = store.workout(id);
   const client = workout ? store.client(workout.clientId) : undefined;

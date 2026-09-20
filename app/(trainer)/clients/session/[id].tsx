@@ -1,5 +1,6 @@
 import React from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { routeParam } from '../../../../src/routeParams';
 import { useStore } from '../../../../src/store';
 import SessionDetail from '../../../../src/components/SessionDetail';
 
@@ -9,7 +10,8 @@ import SessionDetail from '../../../../src/components/SessionDetail';
  */
 export default function TrainerSessionDetail() {
   const store = useStore();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = routeParam(rawId);
   const workout = store.workout(id);
 
   return (

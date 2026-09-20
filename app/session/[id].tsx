@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
@@ -51,7 +52,12 @@ export default function LiveSession() {
   const router = useRouter();
   const store = useStore();
   const { celebrate } = useCelebration();
-  const { id, clientId } = useLocalSearchParams<{ id: string; clientId?: string }>();
+  const { id: rawId, clientId: rawClientId } = useLocalSearchParams<{
+    id?: string | string[];
+    clientId?: string | string[];
+  }>();
+  const id = routeParam(rawId);
+  const clientId = routeParam(rawClientId);
 
   const workout = store.workout(id);
   const client = store.client(clientId ?? workout?.clientId ?? '');

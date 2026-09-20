@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
@@ -17,7 +18,8 @@ export default function MovementDetail() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
-  const { name } = useLocalSearchParams<{ name: string }>();
+  const { name: rawName } = useLocalSearchParams<{ name?: string | string[] }>();
+  const name = routeParam(rawName);
 
   const builtIn = movementInfo(name ?? '');
   const custom = store.customMovement(name ?? '');

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { routeParam } from '../../../src/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../../../src/store';
 import { usePalette, webHitArea } from '../../../src/theme';
@@ -12,7 +13,8 @@ export default function WorkoutDetail() {
   const p = usePalette();
   const router = useRouter();
   const store = useStore();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = routeParam(rawId);
 
   const workout = store.workout(id);
 

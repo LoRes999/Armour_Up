@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { routeParam } from '../../src/routeParams';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { metrics, usePalette } from '../../src/theme';
 import { EmptyState, Title } from '../../src/components/ui';
@@ -19,7 +20,8 @@ import { LEGAL_DOCS, LegalBlock, LegalDocId } from '../../src/legalContent';
  */
 export default function Legal() {
   const p = usePalette();
-  const { doc } = useLocalSearchParams<{ doc: string }>();
+  const { doc: rawDoc } = useLocalSearchParams<{ doc?: string | string[] }>();
+  const doc = routeParam(rawDoc);
 
   const id = doc === 'privacy' || doc === 'terms' ? (doc as LegalDocId) : undefined;
   const document = id ? LEGAL_DOCS[id] : undefined;
