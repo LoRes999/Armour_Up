@@ -12,7 +12,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ryanarmour.armourup",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -77,6 +77,12 @@
       "eas": {
         "projectId": "3f16b4ff-f9b9-432b-b623-37cae668df67"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3f16b4ff-f9b9-432b-b623-37cae668df67"
     }
   }
 }
