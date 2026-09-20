@@ -28,6 +28,9 @@ describe.each(['production', 'preview'])('the %s build', (profile) => {
     expect(env.EXPO_PUBLIC_CLOUD).toBe('1');
   });
 
+  // The key is left out rather than set to "": eas build rejects an empty env
+  // value outright (2026-09-20). config.ts reads a missing one as "no
+  // emulator", so absent and empty mean the same thing to the app.
   it('talks to the live project, never the emulators', () => {
     expect(env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST ?? '').toBe('');
     expect(env.EXPO_PUBLIC_FIREBASE_PROJECT_ID).toBe('strength-coach-a0023');
