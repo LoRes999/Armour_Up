@@ -347,6 +347,25 @@ describe('invites', () => {
     expect(result.current.clientByCode(next)?.id).toBe(id);
     expect(result.current.client(id)?.inviteAccepted).toBe(false);
   });
+
+  it('takes a removed client off the roster with their workouts and code', async () => {
+    const { result } = await mount();
+    const { id, code } = await inviteClient(result);
+    const { id: otherId } = await inviteClient(result);
+    let kept = '';
+    await act(() => {
+      result.current.createWorkout(id);
+      kept = result.current.createWorkout(otherId);
+    });
+    await act(() => {
+      result.current.removeClient(id);
+    });
+
+    expect(result.current.client(id)).toBeUndefined();
+    expect(result.current.clientByCode(code)).toBeUndefined();
+    expect(result.current.workouts.filter((w) => w.clientId === id)).toEqual([]);
+    expect(result.current.workouts.map((w) => w.id)).toContain(kept);
+  });
 });
 
 describe('finishing a session', () => {

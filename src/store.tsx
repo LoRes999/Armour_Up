@@ -139,6 +139,8 @@ interface StoreValue {
   /** Signs the matched client in. Returns them, so the screen owns the copy. */
   redeemInviteCode: (code: string) => Client | undefined;
   regenerateInviteCode: (clientId: string) => string;
+  /** Takes a client off the roster, with their workouts; their code stops working. */
+  removeClient: (clientId: string) => void;
   /** Copies a completed session forward as a solo one the client owns. */
   /** With `replace`, an unfinished solo session is thrown away for this one. */
   repeatWorkout: (sourceWorkoutId: string, options?: { replace?: boolean }) => string | undefined;
@@ -819,6 +821,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           )
         );
         return next;
+      },
+
+      /**
+       * The phone-only half of removing a client; with accounts on, the
+       * removeClient function does it and the tombstones arrive by sync.
+       */
+      removeClient: (clientId) => {
+        setClients((current) => current.filter((c) => c.id !== clientId));
+        setWorkouts((current) => current.filter((w) => w.clientId !== clientId));
+        if (signedInClientId === clientId) setSignedInClientId(null);
       },
 
       setClientUnit: (clientId, unit) =>

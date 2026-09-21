@@ -322,6 +322,35 @@ export default function ClientDetail() {
             router.push({ pathname: '/builder/[id]', params: { id: workoutId, fresh: '1' } });
           }}
         />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            const first = client.name.split(' ')[0];
+            confirm({
+              // Wording chosen by Ryan, 2026-09-20: permanent, and by name.
+              title: `Remove ${first}?`,
+              message: `${first} loses access to their program and history, and you'll lose their training record. They'll need a new invite code to come back. This cannot be undone.`,
+              confirmLabel: 'Remove',
+              destructive: true,
+              // Back to the roster first, so this screen never draws a frame of
+              // "Client not found" for the person just removed.
+              onConfirm: () => {
+                router.back();
+                if (!store.cloudActive) {
+                  store.removeClient(client.id);
+                  return;
+                }
+                auth.removeClient(client.id).catch((failure: Error) =>
+                  notify({ title: `${first} wasn't removed`, message: failure.message })
+                );
+              },
+            });
+          }}
+          style={{ minHeight: metrics.hitTarget, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '700', color: p.danger }}>Remove client</Text>
+        </Pressable>
       </ScrollView>
     </>
   );

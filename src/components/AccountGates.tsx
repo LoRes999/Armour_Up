@@ -12,9 +12,17 @@ import { Card, PrimaryButton, Title } from './ui';
  */
 
 /**
- * Signed in, but setup stopped before the account got a side — the connection
- * dropped between creating the account and the coaching profile or the
- * invitation. Either way can be finished from here.
+ * Signed in, with no side to the app.
+ *
+ * Two ways here, and the screen has to serve both. Setup stopped before the
+ * account got one — the connection dropped between creating the account and
+ * the coaching profile or the invitation. Or a coach removed this person from
+ * their roster, which clears the same claim (functions/src/roster.ts): they
+ * keep their sign-in and lose everything it reached.
+ *
+ * So it leads with the state rather than the cause, which is true either way
+ * and is what the person can act on. Nobody is left at a dead end: a code
+ * from another coach works from here.
  */
 export function FinishSetup() {
   const p = usePalette();
@@ -24,9 +32,9 @@ export function FinishSetup() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 28, paddingTop: 24, paddingBottom: 20, gap: 16 }}>
-        <Title size={32}>Finish setting up.</Title>
+        <Title size={32}>You&apos;re not with a coach.</Title>
         <Text style={{ fontSize: 15, color: p.dim, lineHeight: 22 }}>
-          {`Your account${auth.email ? ` (${auth.email})` : ''} was created, but setup didn't finish. Are you coaching, or joining a coach?`}
+          {`Your account${auth.email ? ` (${auth.email})` : ''} isn't connected to a coach, so there's no program to show. Enter an invite code to join one — or set yourself up as a coach.`}
         </Text>
         <View style={{ flex: 1 }} />
         <View style={{ gap: 9 }}>

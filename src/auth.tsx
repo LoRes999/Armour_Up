@@ -84,6 +84,8 @@ export interface AuthValue {
   redeemInvite: (code: string, unit?: WeightUnit) => Promise<void>;
   createInvite: (name: string, email: string, unit: WeightUnit) => Promise<Client>;
   regenerateInviteCode: (clientId: string) => Promise<string>;
+  /** Takes a client off the roster and unlinks their account. */
+  removeClient: (clientId: string) => Promise<void>;
   setNotificationPref: (group: NotificationGroup, on: boolean) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
@@ -341,6 +343,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       regenerateInviteCode: async (clientId) =>
         (await call<{ inviteCode: string }>('regenerateInviteCode', { clientId })).inviteCode,
+
+      removeClient: async (clientId) => {
+        await call('removeClient', { clientId });
+      },
 
       setNotificationPref: async (group, on) => {
         if (!uid) return;
