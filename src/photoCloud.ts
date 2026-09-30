@@ -8,11 +8,13 @@ import { firebase } from './firebase';
  * The full path is built from the coach and the movement, which both sides
  * already know, and the URL is fetched at render time.
  *
- * Deliberately not a download URL. The token in one bypasses storage.rules
- * entirely: anyone the link reached could read the photo for ever, whether or
- * not they are still the coach's client. Asking for the URL each time keeps
- * the rules in force on every fetch, and keeps the Firestore document small —
- * a photo inlined as text would count against its 1 MB limit.
+ * The download URL is never stored. getDownloadURL itself is checked against
+ * storage.rules, but the link it returns carries a token that is not: written
+ * into the movement, anyone the link reached could read the photo for ever,
+ * whether or not they were still the coach's client. Keeping only the name
+ * means every phone has to ask, and is asked who it is. It also keeps the
+ * Firestore document small — a photo inlined as text would count against its
+ * 1 MB limit.
  */
 
 const folder = (trainerId: string, movementId: string) =>

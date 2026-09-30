@@ -20,8 +20,10 @@ import { DashedButton, Eyebrow, PrimaryButton, keyboardAware } from '../../src/c
 import { confirm, notify } from '../../src/confirm';
 import { useConfirmDiscard } from '../../src/useConfirmDiscard';
 import { useClose } from '../../src/useClose';
-import { discardPhotos, keepPhoto, photoName, photoSource } from '../../src/photoStorage';
+import { discardPhotos, keepPhoto, photoSource } from '../../src/photoStorage';
 import { deleteMovementPhotos } from '../../src/photoCloud';
+import { photosAfterEdit, remoteOnly } from '../../src/photoUploads';
+import { CloudPhoto } from '../../src/components/MovementPhotos';
 import { useCloud } from '../../src/sync/context';
 
 /**
@@ -46,6 +48,14 @@ export default function CustomMovementForm() {
   const [cueText, setCueText] = useState((existing?.cues ?? []).join('\n'));
   const [muscleText, setMuscleText] = useState((existing?.muscles ?? []).join(', '));
   const [photoUris, setPhotoUris] = useState<string[]>(existing?.photoUris ?? []);
+  // Photos in the cloud that this phone has no file for: taken on another
+  // phone, or before a reinstall. Shown and removable like the rest. The form
+  // used to know only this phone's files, so on a new phone every name looked
+  // removed and saving deleted them all from the cloud.
+  const [initialRemote] = useState(() =>
+    existing && trainerId ? remoteOnly(existing.photos ?? [], existing.photoUris) : []
+  );
+  const [remotePhotos, setRemotePhotos] = useState<string[]>(initialRemote);
   // Photos copied in while this form was open. If the form closes without
   // saving, their copies are deleted again.
   const added = useRef<string[]>([]);
@@ -62,7 +72,8 @@ export default function CustomMovementForm() {
     description !== (existing?.description ?? '') ||
     cueText !== (existing?.cues ?? []).join('\n') ||
     muscleText !== (existing?.muscles ?? []).join(', ') ||
-    photoUris.join('\n') !== (existing?.photoUris ?? []).join('\n');
+    photoUris.join('\n') !== (existing?.photoUris ?? []).join('\n') ||
+    remotePhotos.join('\n') !== initialRemote.join('\n');
   const leave = useConfirmDiscard(
     changed,
     existing ? 'Your edits to this movement will be lost.' : 'This movement will not be added to your library.'
@@ -128,10 +139,8 @@ export default function CustomMovementForm() {
     if (existing) {
       // The names that are left. A dropped photo goes from the movement in
       // the same write, so a client stops seeing it whether or not deleting
-      // the object itself gets through; the trigger clears the rest.
-      const kept = new Set(photoUris.map(photoName).filter((name): name is string => name !== null));
-      const photos = (existing.photos ?? []).filter((name) => kept.has(name));
-      const gone = (existing.photos ?? []).filter((name) => !kept.has(name));
+      // the object itself gets through.
+      const { photos, gone } = photosAfterEdit(existing.photos ?? [], photoUris, remotePhotos);
       if (gone.length > 0 && trainerId) void deleteMovementPhotos(trainerId, existing.id, gone);
       store.updateCustomMovement(existing.id, {
         name: trimmed,
@@ -176,6 +185,8 @@ export default function CustomMovementForm() {
       },
     });
   };
+
+  const thumb = { width: 104, height: 104, borderRadius: 14 } as const;
 
   const field = {
     paddingHorizontal: 13,
@@ -263,46 +274,27 @@ export default function CustomMovementForm() {
 
           <View style={{ gap: 9 }}>
             <Eyebrow>PHOTOS</Eyebrow>
-            {photoUris.length ? (
+            {photoUris.length || remotePhotos.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {/* Keyed and removed by position: the same photo can legitimately
                     be picked twice, and matching on the URI collided the keys and
                     deleted both copies at once. */}
                 {photoUris.map((uri, index) => (
                   <View key={`${uri}-${index}`}>
-                    <Image
-                      source={{ uri: photoSource(uri) }}
-                      style={{
-                        width: 104,
-                        height: 104,
-                        borderRadius: 14,
-                        backgroundColor: p.surfaceAlt,
-                      }}
-                    />
-                    <Pressable
-                      onPress={() => setPhotoUris((current) => current.filter((_, i) => i !== index))}
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove photo"
-                      // A 26pt badge; the slop makes the target 44pt on a phone.
-                      hitSlop={9}
-                      style={{
-                        position: 'absolute',
-                        top: -6,
-                        right: -6,
-                        width: 26,
-                        height: 26,
-                        borderRadius: 13,
-                        backgroundColor: p.surface,
-                        borderWidth: 1,
-                        borderColor: p.border,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Ionicons name="close" size={14} color={p.danger} />
-                    </Pressable>
+                    <Image source={{ uri: photoSource(uri) }} style={[thumb, { backgroundColor: p.surfaceAlt }]} />
+                    <RemovePhoto onPress={() => setPhotoUris((current) => current.filter((_, i) => i !== index))} />
                   </View>
                 ))}
+                {existing && trainerId
+                  ? remotePhotos.map((name) => (
+                      <View key={name}>
+                        <CloudPhoto trainerId={trainerId} movementId={existing.id} name={name} style={thumb} />
+                        <RemovePhoto
+                          onPress={() => setRemotePhotos((current) => current.filter((other) => other !== name))}
+                        />
+                      </View>
+                    ))
+                  : null}
               </ScrollView>
             ) : null}
             <DashedButton title="Add photos" onPress={addPhoto} />
@@ -329,5 +321,33 @@ export default function CustomMovementForm() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function RemovePhoto({ onPress }: { onPress: () => void }) {
+  const p = usePalette();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Remove photo"
+      // A 26pt badge; the slop makes the target 44pt on a phone.
+      hitSlop={9}
+      style={{
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: p.surface,
+        borderWidth: 1,
+        borderColor: p.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name="close" size={14} color={p.danger} />
+    </Pressable>
   );
 }
