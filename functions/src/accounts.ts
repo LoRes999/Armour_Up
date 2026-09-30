@@ -4,7 +4,7 @@ import { HttpsError, onCall } from 'firebase-functions/https';
 import { CODE_LENGTH, UNITS, type WeightUnit, normaliseCode } from '../../src/models';
 import { SEED_DAY_TYPES } from '../../src/sampleData';
 import { logger } from 'firebase-functions';
-import { SERVER, auth, db, requireUser, text, timeZoneOr } from './admin';
+import { SERVER, auth, db, requireUser, text, timeZoneOr, writeAll } from './admin';
 import { deliver } from './deliver';
 import { recipient } from './load';
 import { DEFAULT_PREFS, leftMessage } from './planner';
@@ -216,13 +216,13 @@ export const deleteAccount = onCall(async (request) => {
     // left kept them — name, email and every session — for good. Each document
     // is replaced whole, so nothing about the person survives in it.
     const tombstone = () => ({ deleted: true, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
-    const writer = db.bulkWriter();
-    workouts.docs.forEach((doc) => writer.set(doc.ref, tombstone()));
     const client = await db.doc(`trainers/${trainerId}/clients/${clientId}`).get();
     const code = client.get('inviteCode');
-    if (typeof code === 'string' && code) writer.delete(db.collection('inviteCodes').doc(code));
-    if (client.exists) writer.set(client.ref, tombstone());
-    await writer.close();
+    await writeAll((writer) => [
+      ...workouts.docs.map((doc) => writer.set(doc.ref, tombstone())),
+      ...(typeof code === 'string' && code ? [writer.delete(db.collection('inviteCodes').doc(code))] : []),
+      ...(client.exists ? [writer.set(client.ref, tombstone())] : []),
+    ]);
 
     // Tell their coach (Ryan's call, and his words). The name comes from the
     // record read above, before it became a tombstone; a retried deletion
@@ -243,9 +243,7 @@ export const deleteAccount = onCall(async (request) => {
   if (role === 'trainer') {
     const clients = await db.collection(`trainers/${user.uid}/clients`).get();
     const codes = await db.collection('inviteCodes').where('trainerId', '==', user.uid).get();
-    const writer = db.bulkWriter();
-    codes.docs.forEach((doc) => writer.delete(doc.ref));
-    await writer.close();
+    await writeAll((writer) => codes.docs.map((doc) => writer.delete(doc.ref)));
     // Their clients' accounts go with it (Ryan's call, 2026-09-13). Only
     // disabling them left each client's email taken for good, their profile
     // and push tokens on the server, and no way to sign in and delete

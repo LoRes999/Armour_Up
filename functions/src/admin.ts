@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { type BulkWriter, getFirestore } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions';
 import { HttpsError, type CallableRequest } from 'firebase-functions/https';
 import { setGlobalOptions } from 'firebase-functions/options';
 import { isValidTimeZone } from './localTime';
@@ -39,6 +40,23 @@ export function text(value: unknown, field: string, max: number): string {
     throw new HttpsError('invalid-argument', `${field} must be between 1 and ${max} characters.`);
   }
   return trimmed;
+}
+
+/**
+ * Several writes that must all land. A BulkWriter's close() resolves even when
+ * some of its writes failed — each failure only rejects that write's own
+ * promise — so a caller that just awaited close() reported success over
+ * missing tombstones.
+ */
+export async function writeAll(queue: (writer: BulkWriter) => Promise<unknown>[]): Promise<void> {
+  const writer = db.bulkWriter();
+  const results = Promise.allSettled(queue(writer));
+  await writer.close();
+  const failed = (await results).filter((result) => result.status === 'rejected');
+  if (failed.length > 0) {
+    logger.error('writes failed', { count: failed.length, first: (failed[0] as PromiseRejectedResult).reason });
+    throw new HttpsError('unavailable', "That didn't finish. Please try again.");
+  }
 }
 
 export function timeZoneOr(value: unknown, fallback = 'UTC'): string {

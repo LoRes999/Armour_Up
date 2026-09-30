@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/https';
-import { SERVER, auth, db, requireTrainer, text } from './admin';
+import { SERVER, auth, db, requireTrainer, text, writeAll } from './admin';
 
 /**
  * Taking somebody off a roster.
@@ -26,53 +26,72 @@ export const removeClient = onCall(async (request) => {
   if (!client.exists) {
     throw new HttpsError('not-found', 'That client is not on your roster.');
   }
-  // Already removed. The phone may simply never have heard the first answer,
-  // and saying so would turn a finished job into an error on screen.
-  if (client.get('deleted') === true) return { ok: true };
 
   const linked = client.get('uid');
   const linkedUid = typeof linked === 'string' && linked ? linked : null;
-  const code = client.get('inviteCode');
 
-  // Tombstones, not deletes, for the same reason deleteAccount uses them: the
-  // coach's other phones learn what changed by asking for documents updated
-  // since they last looked, and a deleted document is simply absent from that
-  // answer. Each is replaced whole, so nothing about the person survives.
-  const tombstone = () => ({ deleted: true, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER });
-  const workouts = await db
-    .collection(`trainers/${trainer.uid}/workouts`)
-    .where('clientId', '==', clientId)
-    .get();
+  // Already removed: the phone may never have heard the first answer, or the
+  // first attempt may have stopped before the account step. The tombstone
+  // keeps the account's uid for exactly this, so asking again finishes the
+  // job — it used to return early and leave the person a client for good.
+  if (client.get('deleted') !== true) {
+    const code = client.get('inviteCode');
+    const workouts = await db
+      .collection(`trainers/${trainer.uid}/workouts`)
+      .where('clientId', '==', clientId)
+      .get();
 
-  const writer = db.bulkWriter();
-  workouts.docs.forEach((doc) => writer.set(doc.ref, tombstone()));
-  if (typeof code === 'string' && code) writer.delete(db.collection('inviteCodes').doc(code));
-  writer.set(clientRef, tombstone());
-  await writer.close();
-
-  if (linkedUid) {
-    // Their profile first, so the scheduler stops treating that account as
-    // this coach's client even if clearing the claims below fails.
-    await db
-      .doc(`users/${linkedUid}`)
-      .update({
-        role: FieldValue.delete(),
-        trainerId: FieldValue.delete(),
-        clientId: FieldValue.delete(),
-      })
-      .catch(() => undefined);
-
-    // The role lives in the sign-in token. Clearing it and revoking the
-    // refresh tokens signs that account out of the client app everywhere; the
-    // token it already holds keeps working until it expires, within the hour.
-    // Only an account that no longer exists is let pass — anything else must
-    // not leave access behind.
-    const unlessGone = (error: { code?: string }) => {
-      if (error?.code !== 'auth/user-not-found') throw error;
-    };
-    await auth.setCustomUserClaims(linkedUid, null).catch(unlessGone);
-    await auth.revokeRefreshTokens(linkedUid).catch(unlessGone);
+    // Tombstones, not deletes, for the same reason deleteAccount uses them: the
+    // coach's other phones learn what changed by asking for documents updated
+    // since they last looked, and a deleted document is simply absent from
+    // that answer. Each is replaced whole, so nothing about the person
+    // survives — except the two ids the removed person's own phone needs.
+    // Its sessions are asked for by clientId; a tombstone without one simply
+    // left that question, and the phone kept showing them.
+    const stamp = { deleted: true, updatedAt: FieldValue.serverTimestamp(), updatedBy: SERVER };
+    await writeAll((writer) => [
+      ...workouts.docs.map((doc) => writer.set(doc.ref, { ...stamp, clientId })),
+      ...(typeof code === 'string' && code ? [writer.delete(db.collection('inviteCodes').doc(code))] : []),
+      writer.set(clientRef, linkedUid ? { ...stamp, uid: linkedUid } : stamp),
+    ]);
   }
 
+  if (linkedUid) await releaseAccount(linkedUid, trainer.uid, clientId);
   return { ok: true };
 });
+
+/**
+ * Takes the client role off the person's account, and only while it still
+ * points at this coach's client: a retry that arrives after they joined
+ * somebody else must leave their new membership alone.
+ *
+ * Deliberately not a sign-out. Revoking their tokens only signed them out
+ * within the hour — onto the welcome screen rather than "You're not with a
+ * coach." — and never shortened their access, since the rules cannot see a
+ * revocation. Their phone notices the profile change below instead, fetches a
+ * token without the role, and lands on that screen within a second.
+ */
+async function releaseAccount(uid: string, trainerId: string, clientId: string) {
+  const account = await auth.getUser(uid).catch((error: { code?: string }) => {
+    if (error?.code === 'auth/user-not-found') return null;
+    throw error;
+  });
+  if (!account) return;
+
+  const claims = account.customClaims ?? {};
+  if (claims.trainerId === trainerId && claims.clientId === clientId) {
+    await auth.setCustomUserClaims(uid, null);
+  }
+
+  // The profile last, after the claims: it is what the person's phone listens
+  // to, and the token it fetches on hearing this must no longer carry the role.
+  const profile = db.doc(`users/${uid}`);
+  const current = await profile.get();
+  if (current.get('trainerId') === trainerId && current.get('clientId') === clientId) {
+    await profile.update({
+      role: FieldValue.delete(),
+      trainerId: FieldValue.delete(),
+      clientId: FieldValue.delete(),
+    });
+  }
+}
