@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { uploadMovementPhoto } from '../photoCloud';
+import { deleteMovementPhotos, uploadMovementPhoto } from '../photoCloud';
 import { photoSource } from '../photoStorage';
-import { pendingUploads } from '../photoUploads';
+import { pendingUploads, uploadPending } from '../photoUploads';
 import { useStore } from '../store';
 import { useCloud } from '../sync/context';
 
@@ -36,20 +36,15 @@ export function PhotoBridge() {
     if (!trainerId || running.current) return;
     running.current = true;
     try {
-      for (const { movementId, name, uri } of pendingUploads(latest.current.movements)) {
-        try {
-          await uploadMovementPhoto(trainerId, movementId, name, photoSource(uri));
-        } catch {
-          // No connection, or the object was refused. Everything after this
-          // would fail the same way, so stop and let the next sweep pick it
-          // all up rather than hammering a dead link.
-          return;
-        }
-        const movement = latest.current.movements.find((m) => m.id === movementId);
-        // Gone while the upload was in flight: the trigger clears its folder.
-        if (!movement) continue;
-        latest.current.update(movementId, { photos: [...(movement.photos ?? []), name] });
-      }
+      // What happens to each photo, and why, is in uploadPending.
+      await uploadPending({
+        pending: pendingUploads(latest.current.movements),
+        upload: ({ movementId, name, uri }) =>
+          uploadMovementPhoto(trainerId, movementId, name, photoSource(uri)),
+        current: (movementId) => latest.current.movements.find((m) => m.id === movementId),
+        record: (movementId, photos) => latest.current.update(movementId, { photos }),
+        orphan: ({ movementId, name }) => void deleteMovementPhotos(trainerId, movementId, [name]),
+      });
     } finally {
       running.current = false;
     }
