@@ -15,13 +15,14 @@ import {
   RepStepper,
   WeightStepper,
 } from '../../src/components/ui';
-import { ElapsedClock, elapsedSeconds } from '../../src/components/SessionClock';
+import { ElapsedClock } from '../../src/components/SessionClock';
 import {
   DEFAULT_UNIT,
   exerciseIsComplete,
   isLogged,
   loggedSets,
   schemeSummary,
+  timedMinutes,
   trainedAt,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
@@ -124,7 +125,7 @@ export default function SoloSession() {
 
   const finish = () => {
     const finishedId = workout.id;
-    const minutes = Math.max(1, Math.round(elapsedSeconds(startedAt) / 60));
+    const minutes = timedMinutes(startedAt);
     // Worked out before finishWorkout, while the store still holds the old
     // records: "was 85, now 90" needs the 85.
     const reward = client

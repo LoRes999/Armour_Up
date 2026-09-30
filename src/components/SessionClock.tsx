@@ -1,6 +1,7 @@
 import React, { useEffect, useReducer } from 'react';
 import { StyleProp, Text, TextStyle, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { timedMinutes } from '../models';
 import { usePalette } from '../theme';
 import { Numeric } from './ui';
 
@@ -44,15 +45,27 @@ export function LiveText({
   return <Text style={style}>{render()}</Text>;
 }
 
-/** "● 12:04 elapsed", derived from the session's own start so it survives leaving and returning. */
+/**
+ * "● 12:04 elapsed", derived from the session's own start so it survives
+ * leaving and returning. Past four hours it stops counting: the session was
+ * picked up again later, and "1440:00 elapsed" measured nothing. It saves no
+ * time either (timedMinutes).
+ */
 export function ElapsedClock({ startedAt, suffix = '' }: { startedAt: number; suffix?: string }) {
   const p = usePalette();
   return (
     <LiveText
       style={{ fontSize: 11, fontWeight: '700', color: p.accent, textAlign: 'center' }}
-      render={() => `● ${clockString(elapsedSeconds(startedAt))} elapsed${suffix}`}
+      render={() => `● ${elapsedLabel(startedAt)}${suffix}`}
     />
   );
+}
+
+/** "12:04 elapsed", or "Not timed" once the clock is past four hours. */
+export function elapsedLabel(startedAt: number, now: number = Date.now()): string {
+  return timedMinutes(startedAt, now) === undefined
+    ? 'Not timed'
+    : `${clockString(elapsedSeconds(startedAt, now))} elapsed`;
 }
 
 /**

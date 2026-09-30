@@ -354,7 +354,7 @@ function SessionBody({ event }: { event: Extract<CelebrationEvent, { kind: 'sess
     <View style={{ gap: 10 }}>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <StatTile label="SETS" value={String(reward.sets)} />
-        <StatTile label="MINUTES" value={String(reward.minutes)} />
+        <StatTile label="MINUTES" value={reward.minutes === undefined ? '—' : String(reward.minutes)} />
         <StatTile label="STREAK" value={`${reward.streak} wk`} tint={p.accent} />
       </View>
 

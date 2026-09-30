@@ -104,6 +104,21 @@ export function lastSessionLabel(iso: string | undefined, now: Date = new Date()
 export const plural = (count: number, one: string, many = `${one}s`) =>
   `${count} ${count === 1 ? one : many}`;
 
+/** Past this, a session's clock is not measuring a sitting any more. */
+export const MAX_TIMED_MINUTES = 240;
+
+/**
+ * How long a session took, from its first set to now, or undefined when that
+ * is over four hours (Ryan's call, 2026-09-30). The clock runs from the first
+ * set ever logged, so a session picked up again the next day — a missed one
+ * logged late, a solo carried on — saved a day-long time and swelled the
+ * month's minutes.
+ */
+export function timedMinutes(startedAt: number, now: number = Date.now()): number | undefined {
+  const minutes = Math.max(1, Math.round((now - startedAt) / 60_000));
+  return minutes > MAX_TIMED_MINUTES ? undefined : minutes;
+}
+
 /** "48 min", "1 hr 12 min"; nothing at all for a session that was not timed. */
 export function formatDuration(minutes: number | undefined): string | undefined {
   if (!minutes) return undefined;

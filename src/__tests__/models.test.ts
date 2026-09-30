@@ -17,6 +17,7 @@ import {
   parseWeightInput,
   plural,
   schemeSummary,
+  timedMinutes,
   toCanonical,
   toDisplay,
   topLoggedWeight,
@@ -199,6 +200,24 @@ describe('formatDuration', () => {
   it('has nothing to say when nothing was timed', () => {
     expect(formatDuration(undefined)).toBeUndefined();
     expect(formatDuration(0)).toBeUndefined();
+  });
+});
+
+// Ryan's call (2026-09-30): a session picked up again hours or days later
+// counted from its first set, and saved a day-long time.
+describe('timedMinutes', () => {
+  const start = Date.parse('2026-09-30T09:00:00Z');
+  const after = (minutes: number) => start + minutes * 60_000;
+
+  it('rounds to the minute, and never says zero', () => {
+    expect(timedMinutes(start, after(47.6))).toBe(48);
+    expect(timedMinutes(start, after(0.2))).toBe(1);
+  });
+
+  it('records no time past four hours', () => {
+    expect(timedMinutes(start, after(240))).toBe(240);
+    expect(timedMinutes(start, after(241))).toBeUndefined();
+    expect(timedMinutes(start, after(24 * 60))).toBeUndefined();
   });
 });
 

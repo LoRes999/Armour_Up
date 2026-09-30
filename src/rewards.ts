@@ -85,7 +85,8 @@ export interface RecordBroken {
 export interface SessionReward {
   tier: RewardTier;
   sets: number;
-  minutes: number;
+  /** Undefined for a session that was not timed. */
+  minutes: number | undefined;
   prs: RecordBroken[];
   /** The session count just reached, when it is one of MILESTONES. */
   milestone?: number;
@@ -179,7 +180,8 @@ export function sessionReward(input: {
   workout: Workout;
   priorRecords: readonly PersonalRecord[];
   priorCompletedDates: readonly string[];
-  minutes: number;
+  /** Undefined for a session that was not timed. */
+  minutes: number | undefined;
   now: Date;
   /** Injectable so tests are deterministic. */
   random?: () => number;
