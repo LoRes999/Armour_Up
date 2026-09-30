@@ -90,7 +90,13 @@ export default function Join() {
   // not on what survived normalising: an O where a Q belongs is stripped, which
   // used to leave a full-looking field with no match and no error at all.
   const lookupError = cloud && lookup?.code === clean ? lookup.error : null;
-  const wrong = cloud ? lookupError !== null : code.trim().length >= CODE_LENGTH && !localMatch;
+  // With accounts a code is only looked up once six valid characters are in,
+  // so one typed with an O, 0, I or 1 — letters codes never use — looked
+  // simply unfinished: no lookup, and no word of what was wrong.
+  const unusable = /[OI01]/.test(code.toUpperCase());
+  const wrong = cloud
+    ? lookupError !== null || (unusable && code.trim().length >= CODE_LENGTH)
+    : code.trim().length >= CODE_LENGTH && !localMatch;
 
   /**
    * A fresh install has no clients, so there is no code to demo with. Seeding
@@ -248,7 +254,10 @@ export default function Join() {
           />
           {wrong ? (
             <Text style={{ fontSize: 12, color: p.danger, textAlign: 'center' }}>
-              {lookupError ?? "We don't recognise that code. Check it with your coach."}
+              {lookupError ??
+                (unusable
+                  ? 'Invite codes never use O, 0, I or 1. Check it with your coach.'
+                  : "We don't recognise that code. Check it with your coach.")}
             </Text>
           ) : null}
         </View>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../src/auth';
 import { AuthField, FormError } from '../src/components/AuthField';
 import { PrimaryButton, Title, keyboardAware } from '../src/components/ui';
@@ -14,6 +15,7 @@ import { useClose } from '../src/useClose';
  */
 export default function SignIn() {
   const p = usePalette();
+  const router = useRouter();
   const auth = useAuth();
   const close = useClose();
   const [email, setEmail] = useState('');
@@ -29,8 +31,11 @@ export default function SignIn() {
     setError(null);
     try {
       await auth.signIn(email, password);
-      // Back to the root gate, which opens whichever side this account is.
-      close();
+      // Back to the root gate, which opens whichever side this account is —
+      // past anything underneath. Reached from the Join screen, closing just
+      // this one landed back on Join's "Last step" form.
+      if (router.canDismiss()) router.dismissAll();
+      else close();
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
