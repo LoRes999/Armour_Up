@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../../../src/store';
+import { rosterSessions, useStore } from '../../../src/store';
 import { metrics, usePalette } from '../../../src/theme';
 import {
   Avatar,
@@ -12,7 +12,7 @@ import {
   SegmentedPicker,
   keyboardAware,
 } from '../../../src/components/ui';
-import { Client, initialsOf } from '../../../src/models';
+import { Client, initialsOf, trainedAt } from '../../../src/models';
 import { SyncPill } from '../../../src/components/SyncPill';
 
 type Filter = 'today' | 'all' | 'flagged';
@@ -128,13 +128,16 @@ function ClientRow({ client }: { client: Client }) {
   const p = usePalette();
   const store = useStore();
 
-  const next = store.upcomingFor(client.id)[0];
+  const { next, lastMissed } = rosterSessions(store.upcomingFor(client.id));
   const last = store.historyFor(client.id)[0];
   const lapsed = store.lapsedClients().some((c) => c.id === client.id);
   const today = store.clientsWithSessionToday().some((c) => c.id === client.id);
 
   let subtitle = 'No sessions yet';
-  if (next) {
+  if (lastMissed) {
+    // A miss comes first (Ryan's call, 2026-09-30): it is the thing to act on.
+    subtitle = `Missed · ${lastMissed.name}`;
+  } else if (next) {
     const when = new Date(next.date);
     const isToday = when.toDateString() === new Date().toDateString();
     subtitle = isToday
@@ -147,7 +150,7 @@ function ClientRow({ client }: { client: Client }) {
       new Date(input.getFullYear(), input.getMonth(), input.getDate()).getTime();
     const days = Math.max(
       0,
-      Math.round((startOfDay(new Date()) - startOfDay(new Date(last.date))) / 86_400_000)
+      Math.round((startOfDay(new Date()) - startOfDay(new Date(trainedAt(last)))) / 86_400_000)
     );
     subtitle =
       days === 0

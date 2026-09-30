@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
-import { StoreProvider, isMissedSession, useStore } from '../store';
-import { WeightUnit, toCanonical, toDisplay } from '../models';
+import { StoreProvider, isMissedSession, rosterSessions, useStore } from '../store';
+import { WeightUnit, Workout, toCanonical, toDisplay } from '../models';
 
 /**
  * Note on style: in @testing-library/react-native v14, `renderHook` and `act`
@@ -133,6 +133,37 @@ describe('a missed session', () => {
 
     expect(finished && isMissedSession(finished)).toBe(false);
     expect(solo && isMissedSession(solo)).toBe(false);
+  });
+});
+
+// The roster picked the oldest unfinished session, so a miss from two weeks
+// ago on a Tuesday read "Upper A · Tue", as though it were coming up.
+describe('what the roster shows as coming up', () => {
+  const now = new Date(2026, 8, 30, 12);
+  const session = (name: string, day: number, exercises = 1): Workout => ({
+    id: `w-${name}`,
+    clientId: 'c',
+    name,
+    date: new Date(2026, 8, day, 9).toISOString(),
+    exercises: Array.from({ length: exercises }, (_, i) => ({ id: `e${i}`, movementName: 'Bench Press', sets: [] })),
+    coachNote: '',
+    status: 'scheduled',
+    loggedBy: 'trainer',
+  });
+
+  it('is the next one dated today or later, and the latest one missed', () => {
+    const { next, lastMissed } = rosterSessions(
+      [session('Upper A', 15), session('Lower A', 22), session('Upper B', 30), session('Lower B', 32)],
+      now
+    );
+    expect(next?.name).toBe('Upper B');
+    expect(lastMissed?.name).toBe('Lower A');
+  });
+
+  it('ignores an empty draft either way', () => {
+    const { next, lastMissed } = rosterSessions([session('Draft', 20, 0), session('Draft 2', 31, 0)], now);
+    expect(next).toBeUndefined();
+    expect(lastMissed).toBeUndefined();
   });
 });
 

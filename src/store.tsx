@@ -220,6 +220,22 @@ export const isMissedSession = (w: Workout, now: Date = new Date()) =>
   w.loggedBy === 'trainer' && w.status !== 'completed' && startOfDay(w.date) < startOfDay(now);
 
 /**
+ * What the roster says is coming for a client (Ryan's call, 2026-09-30): the
+ * next session dated today or later, and the latest one they missed. It took
+ * the oldest unfinished session, so one missed two weeks ago on a Tuesday
+ * read "Upper A · Tue" as though it were next Tuesday. Empty drafts are
+ * nobody's next session.
+ */
+export function rosterSessions(upcoming: readonly Workout[], now: Date = new Date()) {
+  const real = upcoming.filter((w) => w.exercises.length > 0);
+  const missed = real.filter((w) => isMissedSession(w, now));
+  return {
+    next: real.find((w) => !isMissedSession(w, now)),
+    lastMissed: missed[missed.length - 1],
+  };
+}
+
+/**
  * One shared store. The trainer's writes and the client's reads hit the same
  * objects, so logging a set updates the client's Today screen live.
  * In-memory only: nothing survives a reload.
