@@ -66,6 +66,11 @@ const scopeKey = (scope: SyncScope | null) =>
     ? `${scope.role}:${scope.uid}:${scope.trainerId}:${scope.role === 'client' ? scope.clientId : ''}`
     : null;
 
+/** Whether the saved data and queue belong to this sign-in, in this role, with this coach. */
+function ownedBy(sync: SyncSnapshot, scope: SyncScope): boolean {
+  return sync.ownerUid === scope.uid && (sync.ownerScope === undefined || sync.ownerScope === scopeKey(scope));
+}
+
 export function useCloudSync({
   syncRef,
   setters,
@@ -111,7 +116,7 @@ export function useCloudSync({
     if (syncRef.current.outbox.length === 0) return;
     // The queue belongs to the account it was prepared for. Until a new
     // sign-in has been prepared, it is somebody else's.
-    if (syncRef.current.ownerUid !== current.uid) return;
+    if (!ownedBy(syncRef.current, current)) return;
     const flushKey = scopeKey(current);
     flushing.current = true;
     try {
@@ -120,8 +125,7 @@ export function useCloudSync({
         scope: current,
         refreshToken: live.refreshAuth,
         // Stops the moment another account signs in: what is queued by then is theirs.
-        stillCurrent: () =>
-          scopeKey(latest.current.scope) === flushKey && syncRef.current.ownerUid === current.uid,
+        stillCurrent: () => scopeKey(latest.current.scope) === flushKey && ownedBy(syncRef.current, current),
         readOutbox: () => syncRef.current.outbox,
         updateOutbox: (change) => {
           syncRef.current = { ...syncRef.current, outbox: change(syncRef.current.outbox) };
@@ -176,7 +180,8 @@ export function useCloudSync({
       return true;
     }
     const sync = syncRef.current;
-    if (sync.ownerUid === next.uid) {
+    if (ownedBy(sync, next)) {
+      syncRef.current = { ...sync, ownerScope: nextKey ?? undefined };
       shadowRef.current = current;
     } else if (sync.ownerUid === null && next.role === 'trainer') {
       // Data from before accounts belongs to the first coach who signs in on
@@ -186,13 +191,14 @@ export function useCloudSync({
       // only a starter this phone actually changed goes up; sending them all
       // put a coach's renamed day types back to "Push Day" on every device
       // whenever they signed in on a new or reinstalled phone.
-      syncRef.current = { ...sync, ownerUid: next.uid, watermarks: {} };
+      syncRef.current = { ...sync, ownerUid: next.uid, ownerScope: nextKey ?? undefined, watermarks: {} };
       shadowRef.current = { ...EMPTY_DATA, dayTypes: SEED_DAY_TYPES };
     } else {
-      // Another account's data, or a client's phone: start clean and let the
-      // server fill it. This round stops here — comparing the old data against
-      // nothing would upload somebody else's roster into this account.
-      syncRef.current = { outbox: [], watermarks: {}, ownerUid: next.uid };
+      // Another account's data, the same account with another coach or role,
+      // or a client's phone: start clean and let the server fill it. This
+      // round stops here — comparing the old data against nothing would upload
+      // somebody else's roster into this account.
+      syncRef.current = { outbox: [], watermarks: {}, ownerUid: next.uid, ownerScope: nextKey ?? undefined };
       shadowRef.current = EMPTY_DATA;
       const { setters: live } = latest.current;
       live.clients([]);

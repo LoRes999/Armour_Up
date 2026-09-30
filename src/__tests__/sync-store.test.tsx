@@ -381,6 +381,78 @@ describe('deleting the account on a phone with cloud sync', () => {
   });
 });
 
+/**
+ * Somebody removed by one coach keeps their sign-in and can join another.
+ * Ownership was the account alone, so the same account under a new coach kept
+ * the first coach's movements and day types on screen, and asked the new
+ * coach's collections only for changes since the first coach's watermarks:
+ * everything the new coach made before that moment never arrived.
+ */
+describe('the same account under a different coach', () => {
+  const leftCoach: SyncScope = { role: 'client', uid: 'u-jordan', trainerId: 'u-coach-a', clientId: 'client-a' };
+  const joinedCoach: SyncScope = { role: 'client', uid: 'u-jordan', trainerId: 'u-coach-b', clientId: 'client-b' };
+  const oldMovement = {
+    id: 'mv-a',
+    name: 'Coach A Press',
+    description: '',
+    cues: [],
+    muscles: [],
+    photoUris: [],
+  };
+
+  it("starts clean and asks the new coach for everything", async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify(
+        savedStore({
+          role: 'client',
+          signedInClientId: 'client-a',
+          customMovements: [oldMovement],
+          sync: {
+            outbox: [],
+            watermarks: { movements: 1757613600000, workouts: 1757613600000 },
+            ownerUid: 'u-jordan',
+            ownerScope: 'client:u-jordan:u-coach-a:client-a',
+          },
+        })
+      )
+    );
+    const { server, rendered } = mount(joinedCoach);
+    const { result } = await rendered;
+    await hydrated(result);
+
+    await waitFor(() => expect(result.current.customMovements).toEqual([]));
+    await waitFor(() => expect(server.listening).toBe(true));
+    expect(server.subscribedSince).toEqual({});
+  });
+
+  it('keeps what it has when the same coach comes back', async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify(
+        savedStore({
+          role: 'client',
+          signedInClientId: 'client-a',
+          customMovements: [oldMovement],
+          sync: {
+            outbox: [],
+            watermarks: { movements: 1757613600000 },
+            ownerUid: 'u-jordan',
+            ownerScope: 'client:u-jordan:u-coach-a:client-a',
+          },
+        })
+      )
+    );
+    const { server, rendered } = mount(leftCoach);
+    const { result } = await rendered;
+    await hydrated(result);
+
+    await waitFor(() => expect(server.listening).toBe(true));
+    expect(result.current.customMovements).toHaveLength(1);
+    expect(server.subscribedSince).toEqual({ movements: 1757613600000 });
+  });
+});
+
 describe('without cloud sync', () => {
   it('queues nothing, exactly as before accounts', async () => {
     const { server, rendered } = mount(null);

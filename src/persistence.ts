@@ -68,6 +68,14 @@ export interface SyncSnapshot {
   watermarks: Watermarks;
   /** The account this data belongs to. Null for data from before accounts existed. */
   ownerUid: string | null;
+  /**
+   * Which of that account's roles and coaches it belongs to. The account
+   * alone was not enough: somebody removed by one coach keeps their sign-in
+   * and can join another, and the first coach's data and watermarks carried
+   * over. Absent in data saved before this existed, which is read as the
+   * account's current scope once and then written down.
+   */
+  ownerScope?: string;
 }
 
 export const EMPTY_SYNC: SyncSnapshot = { outbox: [], watermarks: {}, ownerUid: null };
