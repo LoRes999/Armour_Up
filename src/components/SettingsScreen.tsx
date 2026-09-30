@@ -266,10 +266,27 @@ export default function SettingsScreen() {
               </>
             ) : null}
             <Divider />
-            <Pressable accessibilityRole="button" onPress={() => store.restorePurchase()}>
+            {/* It used to answer nothing at all, whatever happened. The same
+                words as the paywall's Restore. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ busy: store.purchasePending }}
+              disabled={store.purchasePending}
+              onPress={async () => {
+                const restored = await store.restorePurchase();
+                notify(
+                  restored
+                    ? { title: 'Subscription restored', message: 'Your subscription is active on this account.' }
+                    : {
+                        title: 'Nothing to restore',
+                        message: 'No active subscription is attached to this account.',
+                      }
+                );
+              }}
+            >
               <View style={{ minHeight: 46, paddingHorizontal: 13, justifyContent: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: p.text }}>
-                  Restore purchases
+                <Text style={{ fontSize: 14, fontWeight: '600', color: store.purchasePending ? p.dim : p.text }}>
+                  {store.purchasePending ? 'Restoring…' : 'Restore purchases'}
                 </Text>
               </View>
             </Pressable>

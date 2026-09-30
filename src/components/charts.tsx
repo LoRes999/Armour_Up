@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { usePalette } from '../theme';
 import { Eyebrow, Numeric } from './ui';
-import { WeightUnit, formatIn, plural, trendVerb } from '../models';
+import { WeightUnit, formatIn, formatWeight, plural, toDisplay, trendVerb } from '../models';
 
 // MARK: - Progress ring
 
@@ -111,10 +111,14 @@ export function TopSetChart({
   const activeIndex =
     selected !== null && selected >= 0 && selected < points.length ? selected : points.length - 1;
   const active = points[activeIndex];
-  const gain =
-    points.length > 1 && points[points.length - 1].weight > points[0].weight
-      ? points[points.length - 1].weight - points[0].weight
-      : null;
+  // The difference between the two numbers on screen. Converting the raw
+  // difference instead snapped it to the unit's plate step, so a 1 kg gain
+  // shown in pounds read "+0 lb".
+  const shownGain =
+    points.length > 1
+      ? toDisplay(points[points.length - 1].weight, unit) - toDisplay(points[0].weight, unit)
+      : 0;
+  const gain = shownGain > 1e-9 ? shownGain : null;
 
   if (!geometry || !active) {
     return null;
@@ -133,7 +137,7 @@ export function TopSetChart({
         <View style={{ alignItems: 'flex-end' }}>
           {gain !== null ? (
             <Numeric size={12} color={p.success}>
-              {`+${formatIn(gain, unit)} ${unit}`}
+              {`+${formatWeight(gain)} ${unit}`}
             </Numeric>
           ) : null}
           <Text style={{ fontSize: 11, fontWeight: '600', color: p.dim, marginTop: 1 }}>

@@ -96,10 +96,13 @@ export default function Paywall() {
     ? [
         {
           icon: 'people-outline' as const,
+          // With nobody on the roster it read "Your 0 clients are safe".
           title:
-            store.clients.length === 1
-              ? 'Your client is safe'
-              : `Your ${store.clients.length} clients are safe`,
+            store.clients.length === 0
+              ? 'Your work is safe'
+              : store.clients.length === 1
+                ? 'Your client is safe'
+                : `Your ${store.clients.length} clients are safe`,
           detail: 'Every program, session and personal record is exactly where you left it.',
         },
         {
