@@ -29,10 +29,12 @@ import {
   plural,
   topTargetWeight,
   totalSets,
+  upperFirst,
   workoutProgress,
 } from '../../src/models';
-import { useCoachName } from '../../src/auth';
+import { useCoachFirstName, useCoachName } from '../../src/auth';
 import { SyncPill } from '../../src/components/SyncPill';
+import { MovementName, openMovement } from '../../src/components/MovementLink';
 import { useCelebration } from '../../src/celebration/CelebrationProvider';
 import { relativeDay } from '../../src/rewards';
 
@@ -58,7 +60,7 @@ export default function ClientToday() {
   const lastSession = client ? store.historyFor(client.id)[0] : undefined;
   const unit = client?.unit ?? DEFAULT_UNIT;
   const coachName = useCoachName();
-  const coachFirstName = coachName.split(' ')[0];
+  const coachFirstName = useCoachFirstName();
 
   const streak = client ? store.weekStreak(client.id) : { weeks: 0, atRisk: false };
   const fresh = client ? store.unseenFromCoach(client.id) : [];
@@ -214,7 +216,7 @@ export default function ClientToday() {
                 <EmptyState
                   icon="hourglass-outline"
                   title="You're in"
-                  message={`${coachFirstName} hasn't sent your first session yet. It shows up here the moment they do.`}
+                  message={`${upperFirst(coachFirstName)} hasn't sent your first session yet. It shows up here the moment they do.`}
                 />
               ) : (
                 <EmptyState
@@ -265,7 +267,7 @@ export default function ClientToday() {
                 {/* Otherwise an untouched session is an empty ring with nothing
                     to tap, which reads as broken rather than as not-started. */}
                 <Text style={{ fontSize: 11, color: p.dim, marginTop: 3 }}>
-                  {`${coachFirstName} logs these as you lift`}
+                  {`${upperFirst(coachFirstName)} logs these as you lift`}
                 </Text>
               </View>
             </Card>
@@ -333,7 +335,18 @@ function ExerciseCard({
       : `${formatIn(set.targetWeight, unit)} × ${set.targetReps}`;
 
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onToggle}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${exercise.movementName}, ${schemeSummary(exercise)}`}
+      accessibilityState={{ expanded: open }}
+      onPress={onToggle}
+      // The name inside is its own button, which a screen reader cannot reach
+      // inside this one; the same thing is offered here as an action.
+      accessibilityActions={[{ name: 'about', label: `About ${exercise.movementName}` }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'about') openMovement(router, exercise.movementName);
+      }}
+    >
       <Card radius={16} style={{ paddingHorizontal: 13, paddingVertical: 10 }}>
         <View
           style={{
@@ -358,21 +371,11 @@ function ExerciseCard({
 
           <View style={{ flex: 1 }}>
             {/* The name is the way into the movement's reference entry. */}
-            <Pressable accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: '/movement/[name]',
-                  params: { name: exercise.movementName },
-                })
-              }
-              hitSlop={6}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: done ? p.dim : p.text }}>
-                {exercise.movementName}
-              </Text>
-              <Ionicons name="information-circle-outline" size={13} color={p.dim} />
-            </Pressable>
+            <MovementName
+              name={exercise.movementName}
+              textStyle={{ color: done ? p.dim : p.text }}
+              style={{ alignSelf: 'flex-start' }}
+            />
             <Text style={{ fontSize: 11, color: p.dim }}>{schemeSummary(exercise)}</Text>
           </View>
 

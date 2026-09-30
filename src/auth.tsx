@@ -145,6 +145,24 @@ async function rememberedClaims(uid: string): Promise<AccountClaims> {
   }
 }
 
+const COACH_NAME_KEY = 'strength-coach/coach-name';
+
+async function rememberCoachName(trainerId: string, name: string) {
+  await AsyncStorage.setItem(COACH_NAME_KEY, JSON.stringify({ trainerId, name })).catch(() => undefined);
+}
+
+async function rememberedCoachName(trainerId: string): Promise<string | null> {
+  try {
+    const saved = JSON.parse((await AsyncStorage.getItem(COACH_NAME_KEY)) ?? 'null') as {
+      trainerId?: string;
+      name?: string;
+    } | null;
+    return saved?.trainerId === trainerId && saved.name ? saved.name : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Listens to one document, starting again after a growing wait whenever the
  * server stops the listener. The first error is usually a sign-in token a
@@ -297,17 +315,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [uid, role]);
 
-  // The coach's name, as every client screen says it.
+  // The coach's name, as every client screen says it. Remembered on the phone,
+  // so a launch with no connection still says it rather than "your coach".
   useEffect(() => {
     if (!trainerId) {
       setCoachName(null);
       return;
     }
-    return watchDoc(
+    let alive = true;
+    void rememberedCoachName(trainerId).then((name) => {
+      if (alive && name) setCoachName((current) => current ?? name);
+    });
+    const stop = watchDoc(
       doc(firebase().db, 'trainers', trainerId),
-      (snapshot) => setCoachName((snapshot.get('name') as string | undefined) ?? null),
+      (snapshot) => {
+        const name = (snapshot.get('name') as string | undefined) ?? null;
+        setCoachName(name);
+        if (name) void rememberCoachName(trainerId, name);
+      },
       "the coach's name"
     );
+    return () => {
+      alive = false;
+      stop();
+    };
   }, [trainerId]);
 
   const finishTrainerSetup = useCallback(async (name: string) => {
@@ -402,10 +433,22 @@ export function useAuth(): AuthValue {
 }
 
 /**
- * The coach's name, wherever a screen says it. Without accounts the app is a
- * single-coach demo, and that coach is the sample one.
+ * The coach's name, wherever a screen says it, or "your coach" until it is
+ * known. Without accounts the app is a single-coach demo, and that coach is
+ * the sample one.
+ *
+ * A coach's own display name stands in for their record on their own phone.
+ * On a client's it is the client's name: falling back to it had a new or
+ * offline client read "Coached by" themselves.
  */
 export function useCoachName(): string {
-  const { status, profile } = useAuth();
-  return status === 'off' ? TRAINER_NAME : (profile.coachName ?? profile.displayName ?? '');
+  const { status, claims, profile } = useAuth();
+  if (status === 'off') return TRAINER_NAME;
+  return profile.coachName ?? (claims.role === 'trainer' ? profile.displayName : null) ?? 'your coach';
+}
+
+/** The coach's first name, or "your coach" until it is known. */
+export function useCoachFirstName(): string {
+  const name = useCoachName();
+  return name === 'your coach' ? name : name.split(' ')[0];
 }

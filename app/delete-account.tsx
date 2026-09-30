@@ -7,6 +7,7 @@ import { useStore } from '../src/store';
 import { metrics, usePalette } from '../src/theme';
 import { Card, Eyebrow, PrimaryButton, Title, keyboardAware } from '../src/components/ui';
 import { useAuth, useCoachName } from '../src/auth';
+import { upperFirst } from '../src/models';
 import { confirm, notify } from '../src/confirm';
 import { clearPhotos } from '../src/photoStorage';
 import { useClose } from '../src/useClose';
@@ -101,7 +102,7 @@ export default function DeleteAccount() {
         <Text style={{ fontSize: 14, color: p.dim, lineHeight: 21, marginTop: -8 }}>
           {isTrainer
             ? `You cannot undo this. Your clients' accounts are deleted too, along with their programs and history. Cancel your subscription separately in ${storeWording(Platform.OS).cancelWhere}.`
-            : `You cannot undo this. ${coachName} will be notified that you have left.`}
+            : `You cannot undo this. ${upperFirst(coachName)} will be notified that you have left.`}
         </Text>
 
         <Card radius={17} style={{ padding: 15, gap: 10 }}>

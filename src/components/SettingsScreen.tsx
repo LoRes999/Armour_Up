@@ -11,7 +11,7 @@ import { metrics, tagColor, usePalette } from '../theme';
 import { Avatar, Card, Eyebrow, SegmentedPicker, Title } from './ui';
 import { DayType, UNITS, WeightUnit, initialsOf, plural, unitName } from '../models';
 import { DayTypeEditor } from './DayTypePicker';
-import { useAuth, useCoachName } from '../auth';
+import { useAuth, useCoachFirstName, useCoachName } from '../auth';
 import { NOTIFICATION_GROUPS, prefLabels } from '../notificationPrefs';
 import type { SyncStatus } from '../sync/types';
 import { confirm, notify } from '../confirm';
@@ -45,6 +45,7 @@ export default function SettingsScreen() {
   const client = store.currentClient();
   const auth = useAuth();
   const coachName = useCoachName();
+  const coachFirstName = useCoachFirstName();
   // With accounts: the email, notification switches, password and sync rows.
   const cloud = auth.status !== 'off';
   // 'new' opens a blank editor; a DayType opens it loaded for editing.
@@ -87,7 +88,7 @@ export default function SettingsScreen() {
 
   const showSync = () => notify({ title: 'Sync', message: syncDetail(store.syncStatus) });
 
-  const labels = prefLabels(store.role === 'trainer' ? 'trainer' : 'client', coachName.split(' ')[0] ?? '');
+  const labels = prefLabels(store.role === 'trainer' ? 'trainer' : 'client', coachFirstName);
 
   /** A trainer exports the roster; a client exports only themselves. */
   const runExport = () => {
@@ -398,7 +399,7 @@ export default function SettingsScreen() {
             label={
               store.role === 'trainer'
                 ? 'What clients can see'
-                : `What ${coachName.split(' ')[0]} can see`
+                : `What ${coachFirstName} can see`
             }
             onPress={showVisibility}
           />

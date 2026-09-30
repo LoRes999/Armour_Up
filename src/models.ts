@@ -100,6 +100,9 @@ export function lastSessionLabel(iso: string | undefined, now: Date = new Date()
   return `Last session ${new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
 }
 
+/** "your coach" at the start of a sentence. */
+export const upperFirst = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 /** "1 set", "3 sets". The same rule the server's notifications use. */
 export const plural = (count: number, one: string, many = `${one}s`) =>
   `${count} ${count === 1 ? one : many}`;

@@ -71,7 +71,7 @@ jest.mock('firebase/functions', () => ({ httpsCallable: jest.fn() }));
 
 // After the mocks, so the provider picks them up.
 // eslint-disable-next-line import/first
-import { AuthProvider, useAuth } from '../auth';
+import { AuthProvider, useAuth, useCoachFirstName, useCoachName } from '../auth';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
@@ -125,6 +125,49 @@ describe('a read refused the first time', () => {
 
     await waitFor(() => expect(result.current.profile.displayName).toBe('Jordan Lee'), { timeout: 8000 });
     expect(mockSubscriptions['users/u-jordan']).toBe(2);
+  });
+});
+
+/**
+ * Until the coach's own record arrives, the coach's name fell back to the
+ * account's display name — which on a client's phone is the client's own. A
+ * new client, or one offline, read "Coached by Jordan Lee" about themselves.
+ */
+describe("the coach's name on a client's phone", () => {
+  const coachOf = async () => {
+    const rendered = await renderHook(
+      () => ({ auth: useAuth(), name: useCoachName(), first: useCoachFirstName() }),
+      { wrapper }
+    );
+    await act(() => {
+      listener?.(jordan);
+    });
+    return rendered;
+  };
+
+  it("is never the client's own", async () => {
+    mockFailFirst.add('trainers/t-sam');
+    const { result } = await coachOf();
+
+    await waitFor(() => expect(result.current.auth.profile.displayName).toBe('Jordan Lee'));
+    expect(result.current.name).toBe('your coach');
+    expect(result.current.first).toBe('your coach');
+
+    await waitFor(() => expect(result.current.name).toBe('Sam Coach'), { timeout: 8000 });
+    expect(result.current.first).toBe('Sam');
+  });
+
+  it('is remembered for a launch that cannot reach the server', async () => {
+    const first = await coachOf();
+    await waitFor(() => expect(first.result.current.name).toBe('Sam Coach'));
+    await first.unmount();
+
+    for (const key of Object.keys(mockSubscriptions)) delete mockSubscriptions[key];
+    mockFailFirst.add('trainers/t-sam');
+    const { result } = await coachOf();
+    await waitFor(() => expect(result.current.auth.profile.displayName).toBe('Jordan Lee'));
+    await waitFor(() => expect(result.current.name).toBe('Sam Coach'));
+    expect(mockSubscriptions['trainers/t-sam']).toBe(1);
   });
 });
 
