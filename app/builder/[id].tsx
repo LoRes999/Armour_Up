@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { routeParam } from '../../src/routeParams';
@@ -70,6 +70,20 @@ export default function Builder() {
     dirty,
     isNew ? 'This workout will not be added.' : 'Your edits to this workout will be lost.',
     undo
+  );
+
+  // "New workout" made a draft on the way in, and closing without touching it
+  // — a swipe down, Android back, or Save — has nothing to ask about, so it
+  // kept an empty workout nobody wanted. It sat on the program, turned into
+  // "Missed" the next day, and opened a session with nothing in it to log.
+  const untouched = useRef({ isNew, dirty, remove: store.removeWorkout });
+  untouched.current = { isNew, dirty, remove: store.removeWorkout };
+  useEffect(
+    () => () => {
+      const { isNew: created, dirty: changed, remove } = untouched.current;
+      if (created && !changed) remove(id);
+    },
+    [id]
   );
 
   if (!workout) {
@@ -440,7 +454,13 @@ export default function Builder() {
         <DashedButton title="Add exercise" onPress={() => setPicking(true)} color={p.dim} height={48} />
 
         <View style={{ marginTop: 4 }}>
-          <PrimaryButton title={`Assign to ${firstName}`} onPress={assign} />
+          {/* An empty workout is never sent (assignWorkout), and the button
+              used to close the builder as if it had been. */}
+          <PrimaryButton
+            title={`Assign to ${firstName}`}
+            enabled={workout.exercises.length > 0}
+            onPress={assign}
+          />
 
           {/* removeWorkout was only ever reachable from the client's solo
               Discard, so a workout created here could not be undone. */}
