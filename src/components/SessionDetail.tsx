@@ -1,11 +1,10 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, Text, View } from 'react-native';
 import { useStore } from '../store';
 import { metrics, usePalette } from '../theme';
 import { Avatar, Card, EmptyState, Eyebrow, Numeric, Pill, StatTile } from './ui';
 import { DayTypeChip } from './DayTypePicker';
+import { MovementName } from './MovementLink';
 import {
   ExerciseEntry,
   DEFAULT_UNIT,
@@ -37,7 +36,6 @@ export default function SessionDetail({
   footer?: React.ReactNode;
 }) {
   const p = usePalette();
-  const router = useRouter();
   const store = useStore();
   const coachName = useCoachName();
 
@@ -106,21 +104,7 @@ export default function SessionDetail({
         return (
           <Card key={exercise.id} radius={17} style={{ padding: 13, gap: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Pressable accessibilityRole="button"
-                onPress={() =>
-                  router.push({
-                    pathname: '/movement/[name]',
-                    params: { name: exercise.movementName },
-                  })
-                }
-                hitSlop={6}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: p.text }}>
-                  {exercise.movementName}
-                </Text>
-                <Ionicons name="information-circle-outline" size={13} color={p.dim} />
-              </Pressable>
+              <MovementName name={exercise.movementName} style={{ flexShrink: 1 }} />
               {isPR(exercise) ? (
                 <Pill label="NEW PR" tint={p.accent} background={p.accentSoft} />
               ) : null}

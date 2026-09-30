@@ -7,6 +7,7 @@ import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { Card, DashedButton, EmptyState, Title, keyboardAware } from '../../src/components/ui';
 import { movementInfo } from '../../src/movementLibrary';
+import { openMovement } from '../../src/components/MovementLink';
 
 export default function Library() {
   const p = usePalette();
@@ -72,9 +73,7 @@ export default function Library() {
             return (
               <Pressable accessibilityRole="button"
                 key={movement}
-                onPress={() =>
-                  router.push({ pathname: '/movement/[name]', params: { name: movement } })
-                }
+                onPress={() => openMovement(router, movement)}
               >
                 <Card
                   radius={16}

@@ -28,6 +28,7 @@ import {
   totalSets,
 } from '../../../src/models';
 import { SAMPLE_CLIENT_IDS } from '../../../src/sampleData';
+import { openMovement } from '../../../src/components/MovementLink';
 import { confirm, notify } from '../../../src/confirm';
 import { useAuth } from '../../../src/auth';
 
@@ -293,18 +294,24 @@ export default function ClientDetail() {
                 .personalRecords(client.id)
                 .slice(0, showAllRecords ? undefined : 8)
                 .map((record) => (
-                  <Row
+                  <Pressable
                     key={record.movementName}
-                    title={record.movementName}
-                    subtitle={
-                      record.previousWeight !== undefined
-                        ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
-                        : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`
-                    }
-                    value={formatIn(record.weight, unit)}
-                    unit={`${unit.toUpperCase()} × ${record.reps}`}
-                    valueTint={p.success}
-                  />
+                    onPress={() => openMovement(router, record.movementName)}
+                    accessibilityRole="button"
+                    accessibilityHint="Opens how this movement is done"
+                  >
+                    <Row
+                      title={record.movementName}
+                      subtitle={
+                        record.previousWeight !== undefined
+                          ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
+                          : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`
+                      }
+                      value={formatIn(record.weight, unit)}
+                      unit={`${unit.toUpperCase()} × ${record.reps}`}
+                      valueTint={p.success}
+                    />
+                  </Pressable>
                 ))}
               {!showAllRecords && store.personalRecords(client.id).length > 8 ? (
                 <Pressable

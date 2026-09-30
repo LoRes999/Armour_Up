@@ -16,6 +16,7 @@ import {
   WeightStepper,
 } from '../../src/components/ui';
 import { ElapsedClock } from '../../src/components/SessionClock';
+import { MovementName } from '../../src/components/MovementLink';
 import {
   DEFAULT_UNIT,
   exerciseIsComplete,
@@ -213,21 +214,7 @@ export default function SoloSession() {
         {workout.exercises.map((exercise, exerciseIndex) => (
           <Card key={exercise.id} radius={17} style={{ padding: 13, gap: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Pressable accessibilityRole="button"
-                onPress={() =>
-                  router.push({
-                    pathname: '/movement/[name]',
-                    params: { name: exercise.movementName },
-                  })
-                }
-                hitSlop={6}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: p.text }}>
-                  {exercise.movementName}
-                </Text>
-                <Ionicons name="information-circle-outline" size={13} color={p.dim} />
-              </Pressable>
+              <MovementName name={exercise.movementName} textStyle={{ fontSize: 15 }} style={{ flexShrink: 1 }} />
               <View style={{ flex: 1 }} />
               <Text style={{ fontSize: 11, color: p.dim }}>{schemeSummary(exercise)}</Text>
             </View>

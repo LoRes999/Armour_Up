@@ -89,7 +89,9 @@ export default function CustomMovementForm() {
   const nameTaken =
     trimmed.length > 0 &&
     trimmed.toLowerCase() !== existing?.name.toLowerCase() &&
-    store.allMovements().some((m) => m.toLowerCase() === trimmed.toLowerCase());
+    (store.allMovements().some((m) => m.toLowerCase() === trimmed.toLowerCase()) ||
+      // A movement's page is /movement/{name}, and /movement/new is this form.
+      trimmed.toLowerCase() === 'new');
   const cues = cueText
     .split('\n')
     .map((line) => line.trim())
@@ -179,7 +181,11 @@ export default function CustomMovementForm() {
         // movement", took the Delete button away mid-dismiss, and made the
         // still-filled fields read as unsaved changes — asking "Discard
         // changes?" on top of the delete just confirmed.
-        leave(() => router.dismissTo('/(trainer)/library'));
+        //
+        // Back to wherever the movement's page was opened from: the Library,
+        // or a live session. Going to the Library by name threw the coach out
+        // of a session they were in the middle of.
+        leave(() => router.dismiss(2));
         discardPhotos([...existing.photoUris, ...added.current]);
         store.removeCustomMovement(existing.id);
       },
@@ -232,7 +238,9 @@ export default function CustomMovementForm() {
             />
             {nameTaken ? (
               <Text style={{ fontSize: 12, color: p.danger }}>
-                {`There is already a movement called "${trimmed}". Pick another name.`}
+                {trimmed.toLowerCase() === 'new'
+                  ? 'That name is taken by the app. Pick another name.'
+                  : `There is already a movement called "${trimmed}". Pick another name.`}
               </Text>
             ) : null}
           </View>

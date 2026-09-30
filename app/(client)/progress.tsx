@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { openMovement } from '../../src/components/MovementLink';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
 import { Card, EmptyState, Eyebrow, Numeric, Title } from '../../src/components/ui';
@@ -10,6 +12,7 @@ import { DEFAULT_UNIT, formatIn } from '../../src/models';
 
 export default function Progress() {
   const p = usePalette();
+  const router = useRouter();
   const store = useStore();
   const { width } = useWindowDimensions();
   const [movement, setMovement] = useState<string | null>(null);
@@ -90,49 +93,79 @@ export default function Progress() {
               </Card>
             )}
 
+            {/* The chips choose what the chart shows, so the way into the
+                lift's description sits under it (Ryan's call, 2026-09-30):
+                nothing on this tab opened a movement before. */}
+            {active ? (
+              <Pressable
+                onPress={() => openMovement(router, active)}
+                accessibilityRole="button"
+                accessibilityLabel={`About ${active}`}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  minHeight: metrics.hitTarget,
+                  paddingHorizontal: 4,
+                  marginTop: -6,
+                }}
+              >
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: p.accent }} numberOfLines={1}>
+                  {`About ${active}`}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={p.accent} />
+              </Pressable>
+            ) : null}
+
             {records.length > 0 ? (
               <View style={{ gap: 9 }}>
                 <Eyebrow>PERSONAL RECORDS</Eyebrow>
                 {records.map((record) => (
-                  <Card
+                  <Pressable
                     key={record.movementName}
-                    radius={15}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      paddingHorizontal: 13,
-                      paddingVertical: 11,
-                      minHeight: 56,
-                    }}
+                    onPress={() => openMovement(router, record.movementName)}
+                    accessibilityRole="button"
+                    accessibilityHint="Opens how this movement is done"
                   >
-                    <View
+                    <Card
+                      radius={15}
                       style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 10,
-                        backgroundColor: p.accentSoft,
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        gap: 12,
+                        paddingHorizontal: 13,
+                        paddingVertical: 11,
+                        minHeight: 56,
                       }}
                     >
-                      <Ionicons name="trending-up" size={15} color={p.accent} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: p.text }}>
-                        {record.movementName}
-                      </Text>
-                      <Text style={{ fontSize: 11, color: p.dim }}>
-                        {record.previousWeight !== undefined
-                          ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
-                          : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Numeric size={16}>{formatIn(record.weight, unit)}</Numeric>
-                      <Eyebrow>{`${unit.toUpperCase()} × ${record.reps}`}</Eyebrow>
-                    </View>
-                  </Card>
+                      <View
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 10,
+                          backgroundColor: p.accentSoft,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="trending-up" size={15} color={p.accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: p.text }}>
+                          {record.movementName}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: p.dim }}>
+                          {record.previousWeight !== undefined
+                            ? `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · was ${formatIn(record.previousWeight, unit)} ${unit}`
+                            : `${new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · first recorded`}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Numeric size={16}>{formatIn(record.weight, unit)}</Numeric>
+                        <Eyebrow>{`${unit.toUpperCase()} × ${record.reps}`}</Eyebrow>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color={p.dim} />
+                    </Card>
+                  </Pressable>
                 ))}
                 {!showAllRecords && allRecords.length > records.length ? (
                   <Pressable

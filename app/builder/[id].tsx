@@ -18,6 +18,8 @@ import {
   keyboardAware,
 } from '../../src/components/ui';
 import { DayTypeChip, DayTypeSheet } from '../../src/components/DayTypePicker';
+import { MovementName, openMovement } from '../../src/components/MovementLink';
+import { MovementInfo } from '../../src/components/MovementInfo';
 import {
   ExerciseEntry,
   DEFAULT_UNIT,
@@ -315,13 +317,22 @@ export default function Builder() {
               <Pressable
                 onPress={() => setOpenExercise(open ? '' : exercise.id)}
                 accessibilityRole="button"
+                accessibilityLabel={exercise.movementName}
                 accessibilityState={{ expanded: open }}
+                // The name inside is its own button, out of a screen reader's
+                // reach inside this one, so it is offered here as an action.
+                accessibilityActions={[{ name: 'about', label: `About ${exercise.movementName}` }]}
+                onAccessibilityAction={(event) => {
+                  if (event.nativeEvent.actionName === 'about') openMovement(router, exercise.movementName);
+                }}
                 style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, minHeight: metrics.hitTarget }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: p.text }}>
-                    {exercise.movementName}
-                  </Text>
+                  <MovementName
+                    name={exercise.movementName}
+                    textStyle={{ fontSize: 16 }}
+                    style={{ alignSelf: 'flex-start' }}
+                  />
                   <Text style={{ fontSize: 11, color: p.dim, marginTop: 2 }}>
                     {open
                       ? lastTimeText(exercise)
@@ -528,14 +539,68 @@ function MovementPicker({
   const p = usePalette();
   const store = useStore();
   const [search, setSearch] = useState('');
+  // The movement whose description is showing, in place of the list. A page
+  // pushed from inside this sheet opened underneath it (Ryan's call,
+  // 2026-09-30: read it here, with "Add to workout" beside it).
+  const [reading, setReading] = useState<string | null>(null);
   // The trainer's own movements are programmable the moment they exist.
   const catalogue = store.allMovements();
   const results = search
     ? catalogue.filter((m) => m.toLowerCase().includes(search.toLowerCase()))
     : catalogue;
 
+  const close = () => {
+    setReading(null);
+    onClose();
+  };
+
+  if (visible && reading) {
+    return (
+      <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setReading(null)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              padding: metrics.screenPadding,
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to the list"
+              onPress={() => setReading(null)}
+              hitSlop={8}
+              style={{ minHeight: metrics.hitTarget, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Ionicons name="chevron-back" size={20} color={p.accent} />
+              <Text style={{ fontSize: 16, color: p.accent }}>Back</Text>
+            </Pressable>
+            <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: p.text }} numberOfLines={1}>
+              {reading}
+            </Text>
+          </View>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: metrics.screenPadding, paddingBottom: 16 }}>
+            <MovementInfo name={reading} custom={store.customMovement(reading)} />
+          </ScrollView>
+          <View style={{ padding: metrics.screenPadding }}>
+            <PrimaryButton
+              title="Add to workout"
+              icon="add"
+              onPress={() => {
+                const picked = reading;
+                setReading(null);
+                onPick(picked);
+              }}
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
         <View
           style={{
@@ -546,7 +611,7 @@ function MovementPicker({
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: '800', color: p.text }}>Add exercise</Text>
-          <Pressable accessibilityRole="button" onPress={onClose} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" onPress={close} style={{ minHeight: metrics.hitTarget, justifyContent: 'center' }}>
             <Text style={{ fontSize: 16, color: p.accent }}>Cancel</Text>
           </Pressable>
         </View>
@@ -579,14 +644,33 @@ function MovementPicker({
             />
           ) : (
             results.map((movement) => (
-              <Pressable accessibilityRole="button" key={movement} onPress={() => onPick(movement)}>
-                <Card
-                  radius={14}
-                  style={{ paddingHorizontal: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}
+              <Card
+                key={movement}
+                radius={14}
+                style={{ flexDirection: 'row', alignItems: 'center', minHeight: metrics.hitTarget }}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${movement}`}
+                  onPress={() => onPick(movement)}
+                  style={{ flex: 1, paddingLeft: 14, minHeight: metrics.hitTarget, justifyContent: 'center' }}
                 >
                   <Text style={{ fontSize: 15, fontWeight: '600', color: p.text }}>{movement}</Text>
-                </Card>
-              </Pressable>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`About ${movement}`}
+                  onPress={() => setReading(movement)}
+                  style={{
+                    width: metrics.hitTarget,
+                    minHeight: metrics.hitTarget,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="information-circle-outline" size={20} color={p.dim} />
+                </Pressable>
+              </Card>
             ))
           )}
         </ScrollView>

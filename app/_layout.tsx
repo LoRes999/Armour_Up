@@ -104,6 +104,11 @@ function Root() {
             options={{ presentation: 'fullScreenModal', headerShown: true }}
           />
           <Stack.Screen name="invite" options={{ presentation: 'modal', headerShown: true }} />
+          {/* Writing a movement is the coach's; reading one is anybody's (below). */}
+          <Stack.Screen
+            name="movement/new"
+            options={{ presentation: 'modal', headerShown: true }}
+          />
         </Stack.Protected>
 
         <Stack.Protected guard={clientReady}>
@@ -117,10 +122,6 @@ function Root() {
         <Stack.Screen
           name="movement/[name]"
           options={{ presentation: 'modal', headerShown: true, headerBackTitle: 'Back' }}
-        />
-        <Stack.Screen
-          name="movement/new"
-          options={{ presentation: 'modal', headerShown: true }}
         />
         <Stack.Screen name="join" options={{ presentation: 'modal', headerShown: true }} />
         {/* Accounts. Pushed from the welcome screen, outside both guards. */}

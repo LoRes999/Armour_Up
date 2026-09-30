@@ -210,9 +210,14 @@ export default function ClientToday() {
             <View style={{ gap: 12 }}>
               {/* "Rest day. Enjoy it." is true but wrong for someone who joined
                   a minute ago and has never trained — they are waiting to be
-                  told what happens next, not to be congratulated on a day off. */}
+                  told what happens next, not to be congratulated on a day off.
+                  Only sessions the coach has sent count: a draft still being
+                  built reaches this phone too, and turned "You're in" into
+                  "Rest day" before anything had been sent. */}
               {store.historyFor(client?.id ?? '').length === 0 &&
-              store.workoutsFor(client?.id ?? '').length === 0 ? (
+              !store
+                .workoutsFor(client?.id ?? '')
+                .some((w) => w.assignedAt !== undefined || w.loggedBy === 'client') ? (
                 <EmptyState
                   icon="hourglass-outline"
                   title="You're in"

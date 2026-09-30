@@ -1,17 +1,16 @@
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useRef } from 'react';
+import { Pressable, ScrollView, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { routeParam } from '../../src/routeParams';
 import { useStore } from '../../src/store';
 import { metrics, usePalette } from '../../src/theme';
-import { EmptyState, Eyebrow } from '../../src/components/ui';
-import { movementInfo } from '../../src/movementLibrary';
-import { MovementPhotos } from '../../src/components/MovementPhotos';
+import { EmptyState } from '../../src/components/ui';
+import { MovementInfo, movementEntry } from '../../src/components/MovementInfo';
 
 /**
  * One movement, opened from anywhere its name appears — the library, a
- * client's plan, a past session. The trainer's own movements show whatever
- * photos they attached; the built-in catalogue is written copy alone.
+ * client's plan, a past session, Progress. The trainer's own movements show
+ * whatever photos they attached; the built-in catalogue is written copy alone.
  */
 export default function MovementDetail() {
   const p = usePalette();
@@ -20,17 +19,23 @@ export default function MovementDetail() {
   const { name: rawName } = useLocalSearchParams<{ name?: string | string[] }>();
   const name = routeParam(rawName);
 
-  const builtIn = movementInfo(name ?? '');
-  const custom = store.customMovement(name ?? '');
+  // Opened by name, and a coach can rename their own movement from here.
+  // Coming back from the editor, the name in the route was the old one and
+  // the page read "Nothing written yet"; it follows the movement by id.
+  const byName = store.customMovement(name);
+  const seenId = useRef<string | undefined>(undefined);
+  if (byName) seenId.current = byName.id;
+  const custom = byName ?? store.customMovements.find((m) => m.id === seenId.current);
+  const entry = movementEntry(name, custom);
   const isTrainer = store.role === 'trainer';
 
-  if (!builtIn && !custom) {
+  if (!entry) {
     return (
       <>
         {/* headerRight is cleared explicitly: options merge, so the Edit button
             from before the movement was deleted would otherwise stay, still
             pointing at the deleted movement. */}
-        <Stack.Screen options={{ title: name ?? 'Movement', headerRight: () => null }} />
+        <Stack.Screen options={{ title: name || 'Movement', headerRight: () => null }} />
         <EmptyState
           icon="barbell-outline"
           title="Nothing written yet"
@@ -40,15 +45,11 @@ export default function MovementDetail() {
     );
   }
 
-  const description = custom?.description ?? builtIn?.description ?? '';
-  const cues = custom?.cues.length ? custom.cues : builtIn?.cues ?? [];
-  const muscles = custom?.muscles.length ? custom.muscles : builtIn?.muscles ?? [];
-
   return (
     <>
       <Stack.Screen
         options={{
-          title: custom?.name ?? builtIn?.name ?? 'Movement',
+          title: entry.title,
           headerRight: () =>
             isTrainer && custom ? (
               <Pressable
@@ -67,67 +68,9 @@ export default function MovementDetail() {
 
       <ScrollView
         style={{ backgroundColor: p.background }}
-        contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 40, gap: 14 }}
+        contentContainerStyle={{ padding: metrics.screenPadding, paddingBottom: 40 }}
       >
-        {custom ? <MovementPhotos movement={custom} /> : null}
-
-        {custom ? (
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              paddingHorizontal: 9,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: p.accentSoft,
-            }}
-          >
-            <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0.8, color: p.accent }}>
-              YOUR COACH'S MOVEMENT
-            </Text>
-          </View>
-        ) : null}
-
-        {muscles.length ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {muscles.map((muscle, index) => (
-              <View
-                key={`${muscle}-${index}`}
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 999,
-                  backgroundColor: p.surfaceAlt,
-                }}
-              >
-                <Text style={{ fontSize: 11, fontWeight: '700', color: p.dim }}>{muscle}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {description ? (
-          <Text style={{ fontSize: 14, lineHeight: 21, color: p.text }}>{description}</Text>
-        ) : null}
-
-        {cues.length ? (
-          <View style={{ gap: 9, marginTop: 2 }}>
-            <Eyebrow>COACHING CUES</Eyebrow>
-            {cues.map((cue, index) => (
-              <View key={`${cue}-${index}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                <View
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: 3,
-                    backgroundColor: p.accent,
-                    marginTop: 7,
-                  }}
-                />
-                <Text style={{ flex: 1, fontSize: 13, lineHeight: 20, color: p.text }}>{cue}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        <MovementInfo name={name} custom={custom} />
       </ScrollView>
     </>
   );

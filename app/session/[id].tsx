@@ -57,7 +57,8 @@ export default function LiveSession() {
   const clientId = routeParam(rawClientId);
 
   const workout = store.workout(id);
-  const client = store.client(clientId ?? workout?.clientId ?? '');
+  // routeParam answers '' for a missing id, which `??` never falls back from.
+  const client = store.client(clientId || workout?.clientId || '');
   const unit = client?.unit ?? DEFAULT_UNIT;
 
   const [weight, setWeight] = useState(0);
