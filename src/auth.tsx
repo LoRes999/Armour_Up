@@ -257,20 +257,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const trainerId = role === 'trainer' ? uid : (state.claims.trainerId ?? null);
 
   // The account's own profile: name and notification switches.
+  //
+  // Also how a client hears that their coach removed them or issued a new
+  // code. The server takes the role off the sign-in token and then off this
+  // profile, and the phone otherwise only rereads the token when it next
+  // refreshes — up to an hour, spent on "Getting your program…". Asked again
+  // a few times in case this arrives a moment before the token has changed.
   useEffect(() => {
     if (!uid || !role) {
       setAccount({ displayName: null, prefs: DEFAULT_PREFS });
       return;
     }
-    return watchDoc(
+    let profileRole: unknown = role;
+    let tries = 0;
+    let recheck: ReturnType<typeof setTimeout> | null = null;
+    const settle = () => {
+      recheck = null;
+      if (profileRole === role || tries >= 3) return;
+      tries += 1;
+      void refreshClaims().catch(() => undefined);
+      recheck = setTimeout(settle, 3000);
+    };
+    const stop = watchDoc(
       doc(firebase().db, 'users', uid),
-      (snapshot) =>
+      (snapshot) => {
         setAccount({
           displayName: (snapshot.get('displayName') as string | undefined) ?? null,
           prefs: withDefaults(snapshot.get('notificationPrefs')),
-        }),
+        });
+        if (!snapshot.exists()) return;
+        profileRole = snapshot.get('role');
+        if (!recheck) settle();
+      },
       "this account's profile"
     );
+    return () => {
+      if (recheck) clearTimeout(recheck);
+      stop();
+    };
   }, [uid, role]);
 
   // The coach's name, as every client screen says it.

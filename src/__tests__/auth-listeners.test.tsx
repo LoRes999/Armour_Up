@@ -14,17 +14,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 jest.setTimeout(20000);
 
 type TokenListener = (user: unknown) => void;
-type SnapshotNext = (snapshot: { get: (field: string) => unknown }) => void;
+type SnapshotNext = (snapshot: { exists: () => boolean; get: (field: string) => unknown }) => void;
 let listener: TokenListener | null = null;
 const mockSubscriptions: Record<string, number> = {};
 const mockFailFirst = new Set<string>();
 const mockData: Record<string, Record<string, unknown>> = {};
+/** Sends a document's current mockData to its listener again, as a server change would. */
+const mockEmit: Record<string, () => void> = {};
+let mockCurrentUser: { getIdToken: (force?: boolean) => Promise<unknown> } | null = null;
 
 jest.mock('../config', () => ({
   cloudConfig: { enabled: true, firebase: {}, emulatorHost: '' },
 }));
 jest.mock('../firebase', () => ({
-  firebase: () => ({ auth: { currentUser: null }, db: {}, functions: {} }),
+  firebase: () => ({ auth: { currentUser: mockCurrentUser }, db: {}, functions: {} }),
 }));
 jest.mock('firebase/auth', () => ({
   onIdTokenChanged: (_auth: unknown, next: TokenListener) => {
@@ -44,14 +47,20 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: (ref: string, next: SnapshotNext, error: (e: unknown) => void) => {
     mockSubscriptions[ref] = (mockSubscriptions[ref] ?? 0) + 1;
     const refuse = mockFailFirst.has(ref) && mockSubscriptions[ref] === 1;
+    const send = () =>
+      next({ exists: () => ref in mockData, get: (field: string) => mockData[ref]?.[field] });
     const timer = setTimeout(() => {
       if (refuse) {
         error(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
       } else {
-        next({ get: (field: string) => mockData[ref]?.[field] });
+        mockEmit[ref] = send;
+        send();
       }
     }, 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (mockEmit[ref] === send) delete mockEmit[ref];
+    };
   },
   deleteDoc: () => Promise.resolve(),
   serverTimestamp: () => 'now',
@@ -88,8 +97,9 @@ beforeEach(async () => {
   listener = null;
   for (const key of Object.keys(mockSubscriptions)) delete mockSubscriptions[key];
   mockFailFirst.clear();
+  mockCurrentUser = null;
   mockData['trainers/t-sam'] = { name: 'Sam Coach' };
-  mockData['users/u-jordan'] = { displayName: 'Jordan Lee' };
+  mockData['users/u-jordan'] = { displayName: 'Jordan Lee', role: 'client', trainerId: 't-sam', clientId: 'c-jordan' };
   // A refused read is reported so it can be found in the device log.
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -115,5 +125,31 @@ describe('a read refused the first time', () => {
 
     await waitFor(() => expect(result.current.profile.displayName).toBe('Jordan Lee'), { timeout: 8000 });
     expect(mockSubscriptions['users/u-jordan']).toBe(2);
+  });
+});
+
+/**
+ * A coach removing a client clears the role from their sign-in token and
+ * then from their profile. The phone only reread the token when it next
+ * refreshed — up to an hour — and sat on "Getting your program…" meanwhile.
+ */
+describe('a client removed by their coach', () => {
+  it('finds out as soon as their profile loses its role', async () => {
+    const released = { ...jordan, getIdTokenResult: () => Promise.resolve({ claims: {} }) };
+    const getIdToken = jest.fn(async () => {
+      listener?.(released);
+    });
+    mockCurrentUser = { getIdToken };
+    const { result } = await signIn(jordan);
+    await waitFor(() => expect(mockEmit['users/u-jordan']).toBeDefined());
+    expect(getIdToken).not.toHaveBeenCalled();
+
+    mockData['users/u-jordan'] = { displayName: 'Jordan Lee' };
+    await act(() => {
+      mockEmit['users/u-jordan']();
+    });
+
+    await waitFor(() => expect(result.current.claims.role).toBeUndefined());
+    expect(getIdToken).toHaveBeenCalledWith(true);
   });
 });
