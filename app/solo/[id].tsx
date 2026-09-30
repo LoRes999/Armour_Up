@@ -22,6 +22,7 @@ import {
   isLogged,
   loggedSets,
   schemeSummary,
+  trainedAt,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
 import { useCelebration } from '../../src/celebration/CelebrationProvider';
@@ -130,7 +131,7 @@ export default function SoloSession() {
       ? sessionReward({
           workout,
           priorRecords: store.personalRecords(client.id),
-          priorCompletedDates: store.historyFor(client.id).map((w) => w.date),
+          priorCompletedDates: store.historyFor(client.id).map(trainedAt),
           minutes,
           now: new Date(),
         })

@@ -228,6 +228,18 @@ export interface Workout {
   assignedAt?: string;
   /** When the client acknowledged it, which clears the "new session" card. */
   seenByClientAt?: string;
+  /**
+   * When it was finished. A missed session logged days later still sits on
+   * its planned date in History, but it was trained today, and the streak and
+   * the week's totals count it for today. Absent in sessions finished before
+   * this existed, which count on their date as they always did.
+   */
+  completedAt?: string;
+}
+
+/** The day a finished session counts for: when it was done, or failing that, when it was planned. */
+export function trainedAt(workout: Workout): string {
+  return workout.completedAt ?? workout.date;
 }
 
 /**

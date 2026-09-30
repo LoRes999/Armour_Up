@@ -6,6 +6,7 @@ import {
   loggedSets,
   topLoggedWeight,
   totalSets,
+  trainedAt,
 } from '../../src/models';
 import type { NotificationGroup, NotificationPrefs } from '../../src/notificationPrefs';
 import {
@@ -139,7 +140,7 @@ function recordsIn(sessions: readonly Workout[], history: readonly Workout[]): n
 function inWeek(workouts: readonly Workout[], monday: string, timeZone: string): Workout[] {
   const sunday = addDays(monday, 6);
   return completed(workouts).filter((w) => {
-    const date = localDate(w.date, timeZone);
+    const date = localDate(trainedAt(w), timeZone);
     return date !== null && date >= monday && date <= sunday;
   });
 }
@@ -213,7 +214,7 @@ function forClient(now: Date, context: ClientContext, account: Recipient, traine
     clock.weekday === SEND_AT.streak.weekday &&
     clock.hour === SEND_AT.streak.hour
   ) {
-    const streak = weekStreakIn(history.map((w) => w.date), now, timeZone);
+    const streak = weekStreakIn(history.map(trainedAt), now, timeZone);
     if (streak.atRisk && streak.weeks >= 2) {
       messages.push({
         uid,
@@ -234,7 +235,7 @@ function forClient(now: Date, context: ClientContext, account: Recipient, traine
     if (week.length > 0) {
       const sets = week.reduce((total, w) => total + loggedSets(w), 0);
       const records = recordsIn(week, history);
-      const streak = weekStreakIn(history.map((w) => w.date), now, timeZone);
+      const streak = weekStreakIn(history.map(trainedAt), now, timeZone);
       const streakLine = `your streak is ${plural(streak.weeks, 'week')}`;
       messages.push({
         uid,
@@ -295,8 +296,8 @@ function forTrainer(now: Date, trainer: TrainerContext): Message[] {
     const quiet = trainer.clients
       .filter((context) => context.account)
       .map(({ client, workouts }) => {
-        const last = completed(workouts).sort((a, b) => b.date.localeCompare(a.date))[0];
-        const lastDate = last ? localDate(last.date, timeZone) : null;
+        const last = completed(workouts).sort((a, b) => trainedAt(b).localeCompare(trainedAt(a)))[0];
+        const lastDate = last ? localDate(trainedAt(last), timeZone) : null;
         return { client, last, gap: lastDate ? daysBetween(lastDate, clock.date) : null };
       })
       .filter((entry): entry is { client: Client; last: Workout; gap: number } =>
@@ -317,7 +318,7 @@ function forTrainer(now: Date, trainer: TrainerContext): Message[] {
             : `${listNames(names)} haven't trained in over a week`,
         body:
           quiet.length === 1
-            ? `The last session was ${first.last.name} on ${formatDay(first.last.date, timeZone)}.`
+            ? `The last session was ${first.last.name} on ${formatDay(trainedAt(first.last), timeZone)}.`
             : 'A quick message might be all it takes.',
         route: quiet.length === 1 ? `/(trainer)/clients/${first.client.id}` : '/(trainer)/clients',
         dedupeKey: `inactive:${clock.date}`,

@@ -57,8 +57,9 @@ const completedSession = async (
       result.current.logSet(id, 0, index, weights[index], 5);
     });
   }
+  // Finished on the day it was planned, as a session in the past would have been.
   await act(() => {
-    result.current.finishWorkout(id, 45);
+    result.current.finishWorkout(id, 45, new Date(date));
   });
   return id;
 };
@@ -606,6 +607,34 @@ describe('client stats', () => {
     await completedSession(result, clientId, 'Bench Press', [60, 60, 60], on(7, 30)); // Sunday
     await completedSession(result, clientId, 'Bench Press', [60, 60], on(7, 31)); // Monday
     expect(result.current.clientStats(clientId, now).weekSets).toBe(2);
+  });
+
+  // A session is counted for the day it was done, not the day it was planned.
+  // Last Friday's missed session logged on Monday counted for last week, so
+  // this week read "at risk" and the Sunday push told someone who had trained
+  // that their streak ended tonight.
+  it('counts a missed session for the week it was actually done', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let id = '';
+    await act(() => {
+      id = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.setWorkoutDate(id, on(7, 28)); // last Friday
+      result.current.addExercise(id, 'Bench Press');
+    });
+    await act(() => {
+      result.current.logSet(id, 0, 0, 60, 5);
+    });
+    await act(() => {
+      result.current.finishWorkout(id, 45, new Date(2026, 8, 1, 18)); // this Tuesday
+    });
+
+    expect(result.current.clientStats(clientId, now).weekSets).toBe(1);
+    expect(result.current.weekStreak(clientId, now)).toEqual({ weeks: 1, atRisk: false });
+    // History still shows it on the day it was planned (Ryan's call, B9).
+    expect(result.current.workout(id)?.date).toBe(on(7, 28));
   });
 
   it('works out adherence from the last four weeks of coach sessions', async () => {

@@ -215,10 +215,10 @@ export function sessionReward(input: {
   const count = priorCompletedDates.length + 1;
   const milestone = MILESTONES.includes(count) ? count : undefined;
 
-  // The session happened now, even if the trainer had dated it later in the week.
-  const dated = Date.parse(workout.date);
-  const when = new Date(Number.isNaN(dated) ? now.getTime() : Math.min(dated, now.getTime()));
-  const streak = weekStreak([...priorCompletedDates, when.toISOString()], now).weeks;
+  // The session is being finished now, whatever day it was planned for: a
+  // missed one logged late counts this week, as the store's streak counts it
+  // (trainedAt), and so does one dated later in the week.
+  const streak = weekStreak([...priorCompletedDates, now.toISOString()], now).weeks;
 
   const tier: RewardTier = milestone !== undefined ? 'milestone' : prs.length > 0 ? 'pr' : 'standard';
   const pool = tier === 'pr' ? HEADLINES.pr : HEADLINES.standard;

@@ -296,7 +296,12 @@ describe('streak and motivation', () => {
   it('says nothing when this week already counts, or the streak is only a week', () => {
     const safe = [done('2026-09-10T12:00:00Z'), done('2026-09-02T12:00:00Z')];
     const short = [done('2026-09-02T12:00:00Z')];
-    for (const workouts of [safe, short]) {
+    // Last Friday's session, missed and logged on Tuesday: trained this week.
+    const late = [
+      done('2026-09-04T12:00:00Z', 80, { completedAt: '2026-09-08T18:00:00Z' }),
+      done('2026-08-26T12:00:00Z'),
+    ];
+    for (const workouts of [safe, short, late]) {
       const trainer = coach([{ client: client(), account: person('u-marcus'), workouts }]);
       expect(planScheduled(sundayFivePm, [trainer]).filter((m) => m.kind === 'streak')).toEqual([]);
     }

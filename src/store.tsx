@@ -27,6 +27,7 @@ import {
   makeId,
   makeInviteCode,
   loggedSets,
+  trainedAt,
   normaliseCode,
   topLoggedWeight,
 } from './models';
@@ -134,7 +135,8 @@ interface StoreValue {
   ) => void;
   /** Client-side one-tap logging: fills the set from its target, or clears it. */
   toggleSetLogged: (workoutId: string, exercise: number, set: number) => void;
-  finishWorkout: (workoutId: string, durationMinutes: number) => void;
+  /** `durationMinutes` undefined records an untimed session. `now` is for tests. */
+  finishWorkout: (workoutId: string, durationMinutes: number | undefined, now?: Date) => void;
   invite: (name: string, email: string, unit: WeightUnit) => Client;
   /** Signs the matched client in. Returns them, so the screen owns the copy. */
   redeemInviteCode: (code: string) => Client | undefined;
@@ -179,7 +181,7 @@ interface StoreValue {
   /** The client page's boxes, worked out from History. `now` is for tests. */
   clientStats: (clientId: string, now?: Date) => ClientStats;
   /** Consecutive weeks trained, and whether this week still needs a session to keep it. */
-  weekStreak: (clientId: string) => Streak;
+  weekStreak: (clientId: string, now?: Date) => Streak;
 
   /** True while cloud sync is running for a signed-in account. */
   cloudActive: boolean;
@@ -540,8 +542,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lapsedClients: () => {
         const cutoff = Date.now() - 10 * 86_400_000;
         return clients.filter((c) => {
-          const last = historyFor(c.id)[0];
-          return last !== undefined && new Date(last.date).getTime() < cutoff;
+          const trained = historyFor(c.id).map((w) => new Date(trainedAt(w)).getTime());
+          return trained.length > 0 && Math.max(...trained) < cutoff;
         });
       },
 
@@ -753,7 +755,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           w.seenByClientAt = w.seenByClientAt ?? new Date().toISOString();
         }),
 
-      finishWorkout: (workoutId, durationMinutes) => {
+      finishWorkout: (workoutId, durationMinutes, now = new Date()) => {
         // Guard on the transition, not the call. Both the header flag and the
         // footer button reach this, and neither unmounts fast enough to stop a
         // second tap counting the same session twice.
@@ -765,6 +767,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         mutate(workoutId, (w) => {
           w.status = 'completed';
           w.durationMinutes = durationMinutes;
+          w.completedAt = now.toISOString();
         });
         // Otherwise a client finishes a session and their own profile disagrees.
         const clientId = target.clientId;
@@ -1086,22 +1089,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
         const done = due.filter((w) => w.status === 'completed').length;
         const monday = mondayOf(now).getTime();
-        const newest = [...history].sort((a, b) => b.date.localeCompare(a.date))[0];
+        const newest = [...history].sort((a, b) => trainedAt(b).localeCompare(trainedAt(a)))[0];
         return {
           sessions: history.length,
           adherence: due.length ? Math.round((done / due.length) * 100) : undefined,
           weekSets: history
-            .filter((w) => new Date(w.date).getTime() >= monday)
+            .filter((w) => new Date(trainedAt(w)).getTime() >= monday)
             .reduce((total, w) => total + loggedSets(w), 0),
-          lastSessionAt: newest?.date,
+          lastSessionAt: newest ? trainedAt(newest) : undefined,
         };
       },
 
-      weekStreak: (clientId) =>
-        computeWeekStreak(
-          historyFor(clientId).map((w) => w.date),
-          new Date()
-        ),
+      weekStreak: (clientId, now = new Date()) =>
+        computeWeekStreak(historyFor(clientId).map(trainedAt), now),
     };
   }, [
     hydrated,
