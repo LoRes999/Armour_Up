@@ -133,6 +133,8 @@ interface StoreValue {
     weight: number,
     reps: number
   ) => void;
+  /** Clears a set the coach logged, in a session not yet finished, so it can be logged again. */
+  unlogSet: (workoutId: string, exercise: number, set: number) => void;
   /** Client-side one-tap logging: fills the set from its target, or clears it. */
   toggleSetLogged: (workoutId: string, exercise: number, set: number) => void;
   /** `durationMinutes` undefined records an untimed session. `now` is for tests. */
@@ -635,6 +637,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             w.status = 'inProgress';
             w.startedAt = w.startedAt ?? new Date().toISOString();
           }
+        }),
+
+      /**
+       * The coach taking back a set logged wrong in a live session (Ryan's
+       * call, 2026-09-30). The live screen's cursor is the first unlogged set,
+       * so clearing it brings it straight back to be logged again.
+       */
+      unlogSet: (workoutId, exercise, set) =>
+        mutate(workoutId, (w) => {
+          if (w.loggedBy !== 'trainer' || w.status === 'completed') return;
+          const target = w.exercises[exercise]?.sets[set];
+          if (!target) return;
+          target.loggedWeight = undefined;
+          target.loggedReps = undefined;
         }),
 
       /**

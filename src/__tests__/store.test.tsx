@@ -428,6 +428,59 @@ describe('finishing a session', () => {
     expect(result.current.historyFor(clientId)).toHaveLength(1);
   });
 
+  // A set logged wrong in a live session was permanent (Ryan's call, 2026-09-30).
+  it('lets the coach take back a set before the session is finished', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+    await act(() => {
+      result.current.logSet(workoutId, 0, 0, 60, 5);
+      result.current.logSet(workoutId, 0, 1, 600, 5);
+    });
+
+    await act(() => {
+      result.current.unlogSet(workoutId, 0, 1);
+    });
+    const sets = result.current.workout(workoutId)?.exercises[0].sets;
+    expect(sets?.[0].loggedWeight).toBe(60);
+    expect(sets?.[1].loggedWeight).toBeUndefined();
+    expect(sets?.[1].loggedReps).toBeUndefined();
+
+    await act(() => {
+      result.current.finishWorkout(workoutId, 45);
+    });
+    await act(() => {
+      result.current.unlogSet(workoutId, 0, 0);
+    });
+    expect(result.current.workout(workoutId)?.exercises[0].sets[0].loggedWeight).toBe(60);
+  });
+
+  it('records no time for a session that was not timed', async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    await act(() => {
+      result.current.addExercise(workoutId, 'Bench Press');
+    });
+    await act(() => {
+      result.current.logSet(workoutId, 0, 0, 60, 5);
+    });
+    await act(() => {
+      result.current.finishWorkout(workoutId, undefined);
+    });
+    expect(result.current.workout(workoutId)?.status).toBe('completed');
+    expect(result.current.workout(workoutId)?.durationMinutes).toBeUndefined();
+  });
+
   it('records the duration and moves the session into history', async () => {
     const { result } = await mount();
     const { id: clientId } = await inviteClient(result);

@@ -15,13 +15,8 @@ import {
   RepStepper,
   WeightStepper,
 } from '../../src/components/ui';
-import {
-  ElapsedClock,
-  LiveText,
-  RestBanner,
-  clockString,
-  elapsedSeconds,
-} from '../../src/components/SessionClock';
+import { ElapsedClock, LiveText, RestBanner, elapsedLabel } from '../../src/components/SessionClock';
+import { MovementName } from '../../src/components/MovementLink';
 import {
   exerciseIsComplete,
   DEFAULT_UNIT,
@@ -30,6 +25,7 @@ import {
   loggedSets,
   plural,
   schemeSummary,
+  timedMinutes,
   trainedAt,
 } from '../../src/models';
 import { confirm } from '../../src/confirm';
@@ -162,6 +158,21 @@ export default function LiveSession() {
     );
   }
 
+  // Nothing was ever put in it. "Every set logged" and a Finish that quietly
+  // did nothing were all this used to show.
+  if (workout.exercises.length === 0) {
+    return (
+      <>
+        <Stack.Screen options={headerOptions} />
+        <EmptyState
+          icon="barbell-outline"
+          title="No exercises in this session"
+          message="Add some in the workout builder, then come back to log it."
+        />
+      </>
+    );
+  }
+
   /**
    * Used to drop the trainer back on Today, where the card they had just
    * finished simply vanished. Now it lands with the session's payoff over it —
@@ -169,7 +180,7 @@ export default function LiveSession() {
    * is something to turn round and show.
    */
   const finish = () => {
-    const minutes = Math.max(1, Math.round(elapsedSeconds(startedAt) / 60));
+    const minutes = timedMinutes(startedAt);
     const reward = client
       ? sessionReward({
           workout,
@@ -207,14 +218,64 @@ export default function LiveSession() {
   const exercise = cursor ? workout.exercises[cursor.exercise] : undefined;
   const target = cursor && exercise ? exercise.sets[cursor.set] : undefined;
 
-  const upNext = () => {
+  const upNext = (() => {
     if (!cursor || !exercise) return null;
     if (cursor.set + 1 < exercise.sets.length) {
-      return `${exercise.movementName} · set ${cursor.set + 2}`;
+      return { name: exercise.movementName, detail: `set ${cursor.set + 2}` };
     }
     const next = workout.exercises[cursor.exercise + 1];
-    return next ? `${next.movementName} · ${schemeSummary(next)}` : null;
+    return next ? { name: next.movementName, detail: schemeSummary(next) } : null;
+  })();
+
+  /**
+   * A set logged wrong used to be permanent (Ryan's call, 2026-09-30). Clearing
+   * it makes it the first unlogged set, so the cursor goes straight back to
+   * it — filled with what was logged, since usually one number was off — and
+   * logging it again carries on from wherever the coach had got to.
+   */
+  const redo = (exerciseIndex: number, setIndex: number) => {
+    const set = workout.exercises[exerciseIndex]?.sets[setIndex];
+    if (set?.loggedWeight === undefined) return;
+    const loggedWeight = set.loggedWeight;
+    const loggedReps = set.loggedReps ?? set.targetReps;
+    confirm({
+      title: `Redo set ${setIndex + 1}?`,
+      message: `${formatIn(loggedWeight, unit)} ${unit} × ${loggedReps} is cleared, and the set comes back to log again.`,
+      confirmLabel: 'Redo set',
+      cancelLabel: 'Keep it',
+      onConfirm: () => {
+        syncedFor.current = `${exerciseIndex}-${setIndex}`;
+        setWeight(loggedWeight);
+        setReps(loggedReps);
+        setRestEndsAt(null);
+        store.unlogSet(workout.id, exerciseIndex, setIndex);
+      },
+    });
   };
+
+  const loggedChips = (exerciseIndex: number) => (
+    <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
+      {workout.exercises[exerciseIndex].sets.map((set, index) =>
+        set.loggedWeight !== undefined ? (
+          <Pressable
+            key={set.id}
+            onPress={() => redo(exerciseIndex, index)}
+            accessibilityRole="button"
+            accessibilityLabel={`Set ${index + 1}, ${formatIn(set.loggedWeight, unit)} ${unit} times ${set.loggedReps}`}
+            accessibilityHint="Clears it to log again"
+          >
+            <Card radius={12} style={{ paddingHorizontal: 12, paddingVertical: 7 }}>
+              <Eyebrow>{`SET ${index + 1}`}</Eyebrow>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+                <Numeric size={14}>{formatIn(set.loggedWeight, unit)}</Numeric>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: p.dim }}>{`× ${set.loggedReps}`}</Text>
+              </View>
+            </Card>
+          </Pressable>
+        ) : null
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
@@ -244,21 +305,13 @@ export default function LiveSession() {
         {cursor && exercise && target ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Pressable accessibilityRole="button"
-                onPress={() =>
-                  router.push({
-                    pathname: '/movement/[name]',
-                    params: { name: exercise.movementName },
-                  })
-                }
-                hitSlop={6}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-              >
-                <Text style={{ fontSize: 20, fontWeight: '800', letterSpacing: -0.6, color: p.text }}>
-                  {exercise.movementName}
-                </Text>
-                <Ionicons name="information-circle-outline" size={15} color={p.dim} />
-              </Pressable>
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                <MovementName
+                  name={exercise.movementName}
+                  textStyle={{ fontSize: 20, fontWeight: '800', letterSpacing: -0.6 }}
+                  iconSize={15}
+                />
+              </View>
               <Numeric size={11} color={p.dim}>
                 {`${cursor.exercise + 1} / ${workout.exercises.length}`}
               </Numeric>
@@ -301,48 +354,44 @@ export default function LiveSession() {
             {restEndsAt !== null ? <RestBanner endsAt={restEndsAt} total={REST_SECONDS} /> : null}
 
             <View style={{ gap: 8, marginTop: 4 }}>
-              <Eyebrow>LOGGED</Eyebrow>
+              <Eyebrow>{loggedCount(exercise) === 0 ? 'LOGGED' : 'LOGGED · TAP ONE TO REDO IT'}</Eyebrow>
               {loggedCount(exercise) === 0 ? (
                 <Text style={{ fontSize: 12, color: p.dim }}>
                   Nothing logged for this exercise yet.
                 </Text>
               ) : (
-                <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
-                  {exercise.sets.map((set, index) =>
-                    set.loggedWeight !== undefined ? (
-                      <Card key={set.id} radius={12} style={{ paddingHorizontal: 12, paddingVertical: 7 }}>
-                        <Eyebrow>{`SET ${index + 1}`}</Eyebrow>
-                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
-                          <Numeric size={14}>{formatIn(set.loggedWeight, unit)}</Numeric>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: p.dim }}>
-                            {`× ${set.loggedReps}`}
-                          </Text>
-                        </View>
-                      </Card>
-                    ) : null
-                  )}
-                </View>
+                loggedChips(cursor.exercise)
               )}
             </View>
           </>
         ) : (
-          <Card radius={22} style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
-            <Ionicons name="checkmark-circle" size={42} color={p.success} />
-            <Text style={{ fontSize: 20, fontWeight: '800', color: p.text }}>Every set logged</Text>
-            <LiveText
-              style={{ fontSize: 13, color: p.dim }}
-              render={() =>
-                `${plural(loggedSets(workout), 'set')} · ${plural(workout.exercises.length, 'exercise')} · ${clockString(
-                  elapsedSeconds(startedAt)
-                )}`
-              }
-            />
-          </Card>
+          <>
+            <Card radius={22} style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+              <Ionicons name="checkmark-circle" size={42} color={p.success} />
+              <Text style={{ fontSize: 20, fontWeight: '800', color: p.text }}>Every set logged</Text>
+              <LiveText
+                style={{ fontSize: 13, color: p.dim }}
+                render={() =>
+                  `${plural(loggedSets(workout), 'set')} · ${plural(workout.exercises.length, 'exercise')} · ${elapsedLabel(
+                    startedAt
+                  )}`
+                }
+              />
+            </Card>
+            {/* Every set, so one logged wrong earlier is still in reach before Finish. */}
+            <Eyebrow>TAP A SET TO REDO IT</Eyebrow>
+            {workout.exercises.map((entry, index) => (
+              <View key={entry.id} style={{ gap: 7 }}>
+                <MovementName name={entry.movementName} style={{ alignSelf: 'flex-start' }} />
+                {loggedChips(index)}
+              </View>
+            ))}
+          </>
         )}
       </ScrollView>
 
       <View style={{ paddingHorizontal: metrics.screenPadding, paddingBottom: 8, gap: 9 }}>
-        {upNext() ? (
+        {upNext ? (
           <Card
             radius={15}
             style={{
@@ -354,12 +403,12 @@ export default function LiveSession() {
             }}
           >
             <Eyebrow>UP NEXT</Eyebrow>
-            <Text
-              style={{ flex: 1, fontSize: 13, fontWeight: '700', color: p.text, textAlign: 'right' }}
-              numberOfLines={1}
-            >
-              {upNext()}
-            </Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+              <MovementName name={upNext.name} textStyle={{ fontSize: 13 }} numberOfLines={1} style={{ flexShrink: 1 }} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: p.dim }} numberOfLines={1}>
+                {`· ${upNext.detail}`}
+              </Text>
+            </View>
           </Card>
         ) : null}
 
