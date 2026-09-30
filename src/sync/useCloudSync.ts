@@ -44,6 +44,9 @@ const EMPTY_DATA: SyncedData = { clients: [], workouts: [], dayTypes: [], custom
 /** Long enough that logging a set and the next tap go up together. */
 const UPLOAD_DELAY_MS = 800;
 
+/** How long every listener must keep going before a failure counts as the first again. */
+const STEADY_MS = 30_000;
+
 export interface SyncSetters {
   clients: Dispatch<SetStateAction<Client[]>>;
   workouts: Dispatch<SetStateAction<Workout[]>>;
@@ -277,15 +280,22 @@ export function useCloudSync({
     let alive = true;
     let stop: (() => void) | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    let steady: ReturnType<typeof setTimeout> | null = null;
     let attempts = 0;
 
     const start = () => {
       retry = null;
+      // The wait only starts over once every listener has kept going for a
+      // while. Resetting it whenever any of them answered let one that fails
+      // every time restart all four every two seconds for ever.
+      steady = setTimeout(() => {
+        steady = null;
+        attempts = 0;
+      }, STEADY_MS);
       stop = services.adapter.subscribe(
         scope,
         syncRef.current.watermarks,
         (collection, changes, serverTime) => {
-          attempts = 0;
           if (changes.length === 0) {
             setLastSyncedAt(Date.now());
             return;
@@ -306,6 +316,8 @@ export function useCloudSync({
           // missing, rather than for what the luckiest one already had.
           if (!alive || retry) return;
           console.warn('Cloud sync stopped listening for changes; trying again.', error);
+          if (steady) clearTimeout(steady);
+          steady = null;
           stop?.();
           stop = null;
           attempts += 1;
@@ -319,6 +331,7 @@ export function useCloudSync({
     return () => {
       alive = false;
       if (retry) clearTimeout(retry);
+      if (steady) clearTimeout(steady);
       stop?.();
     };
     // `scope` is read through `key`, which changes exactly when it does.

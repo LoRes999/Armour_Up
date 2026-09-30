@@ -453,6 +453,50 @@ describe('the same account under a different coach', () => {
   });
 });
 
+/**
+ * One subscription is four listeners. Any of them delivering reset the retry
+ * count, so one that failed every time — while the others answered — restarted
+ * all four every two seconds for ever, re-reading three collections each time.
+ */
+describe('a listener that keeps failing', () => {
+  it('backs off even while the others answer', async () => {
+    let subscriptions = 0;
+    const flaky: RemoteAdapter = {
+      write: async () => undefined,
+      subscribe: (_scope, _since, onChanges, onError) => {
+        subscriptions += 1;
+        const answer = setTimeout(() => onChanges('clients', [], 1757613600000), 10);
+        const fail = setTimeout(() => onError(new Error('The query requires an index.')), 50);
+        return () => {
+          clearTimeout(answer);
+          clearTimeout(fail);
+        };
+      },
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const session: CloudSession = {
+      services: { adapter: flaky, watchConnection: (listener) => (listener(true), () => {}) },
+      scope: coach,
+    };
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CloudContext.Provider value={session}>
+        <StoreProvider>{children}</StoreProvider>
+      </CloudContext.Provider>
+    );
+    const { result, unmount } = await renderHook(() => useStore(), { wrapper });
+    await hydrated(result);
+
+    // Waits of 2 s then 4 s: started at 0 and 2 s, not again until 6 s. A
+    // count reset by every answer restarts at 0, 2 and 4 s.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    });
+    await unmount();
+    warn.mockRestore();
+    expect(subscriptions).toBe(2);
+  }, 15000);
+});
+
 describe('without cloud sync', () => {
   it('queues nothing, exactly as before accounts', async () => {
     const { server, rendered } = mount(null);
