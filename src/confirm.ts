@@ -44,6 +44,39 @@ export function confirm({
 }
 
 /**
+ * A pick between a few things, each its own button, plus Cancel. On the web,
+ * which has no such dialog, each is offered in turn.
+ */
+export function choose({
+  title,
+  message,
+  options,
+  cancelLabel = 'Cancel',
+}: {
+  title: string;
+  message?: string;
+  options: { label: string; onPress: () => void }[];
+  cancelLabel?: string;
+}) {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') return;
+    for (const option of options) {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(`${title}\n\n${option.label}?`)) {
+        option.onPress();
+        return;
+      }
+    }
+    return;
+  }
+
+  Alert.alert(title, message, [
+    ...options.map((option) => ({ text: option.label, onPress: option.onPress })),
+    { text: cancelLabel, style: 'cancel' as const },
+  ]);
+}
+
+/**
  * A one-button notice, for the same reason as `confirm` above: there is nothing
  * to decide, but the message still has to actually appear in a browser.
  */

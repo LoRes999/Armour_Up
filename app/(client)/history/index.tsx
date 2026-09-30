@@ -10,7 +10,8 @@ import {
   MonthCalendar,
   MonthHeader,
 } from '../../../src/components/MonthCalendar';
-import { DayType, isSolo, loggedSets } from '../../../src/models';
+import { DayType, Workout, isSolo, loggedSets } from '../../../src/models';
+import { choose } from '../../../src/confirm';
 
 /**
  * The training month. Only completed sessions appear — a day either happened
@@ -30,18 +31,51 @@ export default function History() {
     [client, store]
   );
 
-  // Day-of-month -> that day's session, for the month on screen.
-  const entries = useMemo(() => {
-    const map = new Map<number, CalendarEntry>();
+  // Day-of-month -> that day's sessions, newest first, for the month on screen.
+  const byDay = useMemo(() => {
+    const map = new Map<number, Workout[]>();
     sessions.forEach((workout) => {
       const date = new Date(workout.date);
       if (date.getFullYear() !== cursor.year || date.getMonth() !== cursor.month) return;
       const day = date.getDate();
-      // workoutsFor is newest-first, so the first one to claim a day wins.
-      if (!map.has(day)) map.set(day, { workout, dayType: store.dayType(workout.dayTypeId) });
+      map.set(day, [...(map.get(day) ?? []), workout]);
     });
     return map;
-  }, [sessions, cursor, store]);
+  }, [sessions, cursor]);
+
+  // A cell shows one of them: workoutsFor is newest-first, so the newest.
+  const entries = useMemo(() => {
+    const map = new Map<number, CalendarEntry>();
+    byDay.forEach(([newest], day) => map.set(day, { workout: newest, dayType: store.dayType(newest.dayTypeId) }));
+    return map;
+  }, [byDay, store]);
+
+  const open = (workout: Workout) =>
+    router.push({ pathname: '/(client)/history/[id]', params: { id: workout.id } });
+
+  // One cell opened one session, so a coached session and a solo repeat on
+  // the same day left the first out of reach. A day with two asks which
+  // (Ryan's call, 2026-09-30).
+  const select = (entry: CalendarEntry) => {
+    const day = new Date(entry.workout.date).getDate();
+    const onDay = byDay.get(day) ?? [entry.workout];
+    if (onDay.length === 1) {
+      open(onDay[0]);
+      return;
+    }
+    choose({
+      title: 'Which session?',
+      message: new Date(entry.workout.date).toLocaleDateString(undefined, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }),
+      options: onDay.map((workout) => ({
+        label: isSolo(workout) ? `${workout.name} (solo)` : workout.name,
+        onPress: () => open(workout),
+      })),
+    });
+  };
 
   // Counted over every session in the month, not over the calendar cells. One
   // cell holds one session, so totalling the cells silently dropped a whole
@@ -103,12 +137,7 @@ export default function History() {
           year={cursor.year}
           month={cursor.month}
           entries={entries}
-          onSelect={(entry) =>
-            router.push({
-              pathname: '/(client)/history/[id]',
-              params: { id: entry.workout.id },
-            })
-          }
+          onSelect={select}
         />
 
         {legend.length ? (
