@@ -27,6 +27,7 @@ import {
   plural,
   totalSets,
 } from '../../../src/models';
+import { SAMPLE_CLIENT_IDS } from '../../../src/sampleData';
 import { confirm, notify } from '../../../src/confirm';
 import { useAuth } from '../../../src/auth';
 
@@ -57,6 +58,9 @@ export default function ClientDetail() {
     );
   }
 
+  // Sample clients never go up to the server, so asking it about one only
+  // ever answered "not on your roster". They change on this phone alone.
+  const onServer = store.cloudActive && !SAMPLE_CLIENT_IDS.has(client.id);
   const unit = client.unit;
   // Worked out from History (Ryan's call, 2026-09-13): the stored block,
   // adherence and session count never moved or could disagree with History.
@@ -128,7 +132,7 @@ export default function ClientDetail() {
                 // With accounts, a new code also signs out whoever joined with
                 // the old one, so a code that reached the wrong person can be
                 // taken back. Wording chosen by Ryan, 2026-09-13.
-                ...(store.cloudActive && client.inviteAccepted
+                ...(onServer && client.inviteAccepted
                   ? {
                       message: `${client.name.split(' ')[0]} will be signed out and needs the new code to get back in. Their current code stops working straight away.`,
                       confirmLabel: 'Issue new code',
@@ -140,7 +144,7 @@ export default function ClientDetail() {
                 destructive: true,
                 // With accounts the server issues it, so no two coaches share a code.
                 onConfirm: () => {
-                  if (!store.cloudActive) {
+                  if (!onServer) {
                     store.regenerateInviteCode(client.id);
                     return;
                   }
@@ -337,7 +341,7 @@ export default function ClientDetail() {
               // "Client not found" for the person just removed.
               onConfirm: () => {
                 router.back();
-                if (!store.cloudActive) {
+                if (!onServer) {
                   store.removeClient(client.id);
                   return;
                 }
