@@ -18,6 +18,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { firestoreAdapter } from '../src/sync/firestore';
 import type { SyncScope } from '../src/sync/types';
@@ -129,6 +130,46 @@ describe('a coach', () => {
     await assertFails(
       setDoc(doc(coach(), `trainers/${COACH}/clients/c-forged`), { name: 'X', inviteCode: 'AAAAAA', ...stamp(COACH) })
     );
+  });
+
+  // A phone that was offline when a client was removed uploads its queued
+  // edits later. Merged onto the tombstone, they put the person's name and
+  // email back on the server — the opposite of what removing them promised.
+  it('cannot write onto a removed client or their sessions, only delete them again', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore() as unknown as Firestore;
+      await setDoc(doc(db, `trainers/${COACH}/clients/c-gone`), { deleted: true, uid: 'u-gone' });
+      await setDoc(doc(db, `trainers/${COACH}/workouts/w-gone`), { deleted: true, clientId: 'c-gone' });
+    });
+    const client = doc(coach(), `trainers/${COACH}/clients/c-gone`);
+    const session = doc(coach(), `trainers/${COACH}/workouts/w-gone`);
+
+    await assertFails(setDoc(client, { name: 'Gone Person', email: 'g@example.com', ...stamp(COACH) }, { merge: true }));
+    await assertFails(setDoc(session, { name: 'Push Day', clientId: 'c-gone', ...stamp(COACH) }, { merge: true }));
+    await assertSucceeds(setDoc(client, { deleted: true, ...stamp(COACH) }, { merge: true }));
+    await assertSucceeds(setDoc(session, { deleted: true, ...stamp(COACH) }, { merge: true }));
+  });
+
+  it('cannot create a session for a client who is gone or was never there', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore() as unknown as Firestore, `trainers/${COACH}/clients/c-gone`), {
+        deleted: true,
+      });
+    });
+    const create = (id: string, clientId: string) =>
+      setDoc(doc(coach(), `trainers/${COACH}/workouts/${id}`), { ...trainerWorkout, clientId, ...stamp(COACH) });
+
+    await assertFails(create('w-for-gone', 'c-gone'));
+    await assertFails(create('w-for-nobody', 'c-nobody'));
+    await assertSucceeds(create('w-for-marcus', 'c-marcus'));
+  });
+
+  it('can create a client and their first session together', async () => {
+    const db = coach();
+    const batch = writeBatch(db);
+    batch.set(doc(db, `trainers/${COACH}/clients/c-both`), { name: 'Dana Cole', unit: 'lb', ...stamp(COACH) });
+    batch.set(doc(db, `trainers/${COACH}/workouts/w-both`), { ...trainerWorkout, clientId: 'c-both', ...stamp(COACH) });
+    await assertSucceeds(batch.commit());
   });
 
   it('must stamp every write with the server time and themselves', async () => {
@@ -247,12 +288,18 @@ describe('the sync adapter', () => {
     const adapter = firestoreAdapter(coach());
     await adapter.write(coachScope, [{ collection: 'workouts', id: 'w-coach', op: 'delete', fields: {}, rev: 0 }]);
 
-    // The coach's tablet was offline when that happened, and uploads its edit now.
-    await adapter.write(coachScope, [
-      { collection: 'workouts', id: 'w-coach', op: 'upsert', fields: { name: 'Push Day B' }, rev: 0 },
-    ]);
+    // The coach's tablet was offline when that happened, and uploads its edit
+    // now. It is refused outright — merged in, it wrote the old fields back
+    // onto the tombstone — and the sync engine counts it as a refused change.
+    await expect(
+      adapter.write(coachScope, [
+        { collection: 'workouts', id: 'w-coach', op: 'upsert', fields: { name: 'Push Day B' }, rev: 0 },
+      ])
+    ).rejects.toMatchObject({ message: 'permission-denied', retryable: false });
 
-    expect((await serverCopy(`trainers/${COACH}/workouts/w-coach`))?.deleted).toBe(true);
+    const copy = await serverCopy(`trainers/${COACH}/workouts/w-coach`);
+    expect(copy?.deleted).toBe(true);
+    expect(copy?.name).not.toBe('Push Day B');
   });
 
   it("lets a client's solo session stay deleted too", async () => {

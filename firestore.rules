@@ -45,6 +45,22 @@ service cloud.firestore {
         && (resource == null || resource.data.get('deleted', false) == false);
     }
 
+    // A tombstone stays one. Only another delete may touch it: a phone that
+    // was offline when a client was removed would otherwise merge its queued
+    // edits onto the tombstone, putting the person's details back.
+    function notOntoTombstone() {
+      return resource.data.get('deleted', false) == false
+        || (request.resource.data.get('deleted', false) == true
+          && changed().hasOnly(['deleted', 'updatedAt', 'updatedBy']));
+    }
+
+    // A session is for a client on this roster. getAfter, so a client and
+    // their first session can go up in the same batch.
+    function forLiveClient(trainerId) {
+      let path = /databases/$(database)/documents/trainers/$(trainerId)/clients/$(request.resource.data.clientId);
+      return existsAfter(path) && getAfter(path).data.get('deleted', false) == false;
+    }
+
     // Kept by Cloud Functions; no phone may write them.
     function serverOwnedClientFields() {
       return ['sessionsCompleted', 'inviteCode', 'inviteAccepted', 'uid'];
@@ -80,7 +96,7 @@ service cloud.firestore {
           && !request.resource.data.keys().hasAny(serverOwnedClientFields());
 
         allow update: if stamped() && (
-          (isTrainer(trainerId) && !changed().hasAny(serverOwnedClientFields()))
+          (isTrainer(trainerId) && !changed().hasAny(serverOwnedClientFields()) && notOntoTombstone())
           || (isClientOf(trainerId)
             && myClientId() == clientId
             && live()
@@ -94,13 +110,13 @@ service cloud.firestore {
 
         allow create: if stamped()
           && request.resource.data.clientId is string
-          && (isTrainer(trainerId)
+          && ((isTrainer(trainerId) && forLiveClient(trainerId))
             || (isClientOf(trainerId)
               && request.resource.data.clientId == myClientId()
               && request.resource.data.loggedBy == 'client'));
 
         allow update: if stamped() && (
-          (isTrainer(trainerId) && request.resource.data.clientId is string)
+          (isTrainer(trainerId) && request.resource.data.clientId is string && notOntoTombstone())
           || (isClientOf(trainerId) && resource.data.clientId == myClientId() && (
             // Their own solo session: everything, including deleting it.
             (resource.data.loggedBy == 'client'
