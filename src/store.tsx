@@ -615,8 +615,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           w.exercises.splice(exercise, 1);
         }),
 
+      // The client's "Got it" is theirs, not part of the coach's edit: a Cancel
+      // that put it back to before brought the "New from" card back on their phone.
       restoreWorkout: (snapshot) =>
-        setWorkouts((current) => current.map((w) => (w.id === snapshot.id ? snapshot : w))),
+        setWorkouts((current) =>
+          current.map((w) =>
+            w.id === snapshot.id ? { ...snapshot, seenByClientAt: w.seenByClientAt ?? snapshot.seenByClientAt } : w
+          )
+        ),
 
       logSet: (workoutId, exercise, set, weight, reps) =>
         mutate(workoutId, (w) => {

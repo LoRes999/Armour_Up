@@ -159,6 +159,32 @@ describe('restoring a workout', () => {
 
     expect(result.current.workout(workoutId)).toEqual(original);
   });
+
+  // The client tapped "Got it" on another phone while the coach had the
+  // builder open. Cancel put back the coach's copy whole, "seen" included,
+  // and the "New from" card came back on the client's phone.
+  it("keeps the client's \"Got it\" that arrived meanwhile", async () => {
+    const { result } = await mount();
+    const { id: clientId } = await inviteClient(result);
+    let workoutId = '';
+    await act(() => {
+      workoutId = result.current.createWorkout(clientId);
+    });
+    const original = result.current.workout(workoutId);
+    await act(() => {
+      result.current.renameWorkout(workoutId, 'Push Day B');
+      result.current.markSeenByClient(workoutId);
+    });
+    const seen = result.current.workout(workoutId)?.seenByClientAt;
+
+    await act(() => {
+      if (original) result.current.restoreWorkout(original);
+    });
+
+    expect(result.current.workout(workoutId)?.name).toBe(original?.name);
+    expect(seen).toBeDefined();
+    expect(result.current.workout(workoutId)?.seenByClientAt).toBe(seen);
+  });
 });
 
 describe('removing an exercise', () => {
